@@ -113,6 +113,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented `shouldUpdate` lifecycle optimization to prevent unnecessary re-renders
 - Added parsed schedule cache with automatic invalidation on data changes
 - Cached weekday label map to avoid repeated object creation
+- Cached static time labels array to eliminate recreation on every render
+- Added CSS `will-change` properties for animated elements (current-time-indicator, hover transforms, pulse animations)
+- Optimized browser rendering pipeline for frequently animated components
 
 ### Fixed
 

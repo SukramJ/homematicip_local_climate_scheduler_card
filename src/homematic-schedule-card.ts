@@ -24,6 +24,19 @@ import {
 } from "./utils";
 import { getTranslations, formatString, Translations } from "./localization";
 
+// Static time labels for the schedule view (cached to avoid recreation)
+const TIME_LABELS = (() => {
+  const labels = [];
+  for (let hour = 0; hour <= 24; hour += 3) {
+    labels.push({
+      hour,
+      label: `${hour.toString().padStart(2, "0")}:00`,
+      position: (hour / 24) * 100,
+    });
+  }
+  return labels;
+})();
+
 @customElement("homematic-schedule-card")
 export class HomematicScheduleCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -1139,23 +1152,13 @@ export class HomematicScheduleCard extends LitElement {
   private _renderScheduleView() {
     if (!this._scheduleData) return html``;
 
-    // Generate time axis labels (every 3 hours: 00:00, 03:00, 06:00, ...)
-    const timeLabels = [];
-    for (let hour = 0; hour <= 24; hour += 3) {
-      timeLabels.push({
-        hour,
-        label: `${hour.toString().padStart(2, "0")}:00`,
-        position: (hour / 24) * 100,
-      });
-    }
-
     return html`
       <div class="schedule-container ${this._isCompactView ? "compact" : ""}">
         <!-- Time axis on the left -->
         <div class="time-axis">
           <div class="time-axis-header"></div>
           <div class="time-axis-labels">
-            ${timeLabels.map(
+            ${TIME_LABELS.map(
               (time) => html`
                 <div class="time-label" style="top: ${time.position}%">${time.label}</div>
               `,
@@ -1635,6 +1638,7 @@ export class HomematicScheduleCard extends LitElement {
         z-index: 100;
         transform: translateY(-50%);
         box-shadow: 0 0 4px rgba(255, 0, 0, 0.5);
+        will-change: top;
       }
 
       .current-time-indicator::before {
@@ -1660,6 +1664,10 @@ export class HomematicScheduleCard extends LitElement {
 
       .weekday-column.editable .time-blocks {
         cursor: pointer;
+      }
+
+      .weekday-column.editable {
+        will-change: transform, box-shadow;
       }
 
       .weekday-column.editable:hover {
@@ -1709,6 +1717,7 @@ export class HomematicScheduleCard extends LitElement {
         opacity: 1;
         background-color: rgba(255, 255, 255, 0.3);
         animation: pulse 1s ease-in-out;
+        will-change: transform;
       }
 
       @keyframes pulse {
@@ -1770,6 +1779,7 @@ export class HomematicScheduleCard extends LitElement {
           0 0 30px rgba(255, 255, 255, 0.4);
         animation: pulse-glow 2s ease-in-out infinite;
         z-index: 10;
+        will-change: box-shadow;
       }
 
       @keyframes pulse-glow {
