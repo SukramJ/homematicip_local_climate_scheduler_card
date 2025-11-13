@@ -24,6 +24,19 @@ import {
 } from "./utils";
 import { getTranslations, formatString, Translations } from "./localization";
 
+// Static time labels for the schedule view (cached to avoid recreation)
+const TIME_LABELS = (() => {
+  const labels = [];
+  for (let hour = 0; hour <= 24; hour += 3) {
+    labels.push({
+      hour,
+      label: `${hour.toString().padStart(2, "0")}:00`,
+      position: (hour / 24) * 100,
+    });
+  }
+  return labels;
+})();
+
 @customElement("homematic-schedule-card")
 export class HomematicScheduleCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -131,7 +144,7 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   public getCardSize(): number {
-    return 6;
+    return 12;
   }
 
   public connectedCallback(): void {
@@ -1059,62 +1072,62 @@ export class HomematicScheduleCard extends LitElement {
             entityState.attributes.friendly_name ||
             this._translations.ui.schedule}
           </div>
-          <div class="header-controls">
-            ${this._config.show_profile_selector && this._availableProfiles.length > 0
-              ? html`
-                  <select
-                    class="profile-selector"
-                    @change=${this._handleProfileChange}
-                    .value=${this._currentProfile || ""}
-                  >
-                    ${this._availableProfiles.map(
-                      (profile) => html`
-                        <option value=${profile} ?selected=${profile === this._currentProfile}>
-                          ${profile}
-                        </option>
-                      `,
-                    )}
-                  </select>
-                `
-              : ""}
-            ${this._config?.editable
-              ? html`
-                  <button
-                    class="dragdrop-toggle-btn ${this._isDragDropMode ? "active" : ""}"
-                    @click=${this._toggleDragDropMode}
-                    title="${this._isDragDropMode
-                      ? this._translations.ui.disableDragDrop
-                      : this._translations.ui.enableDragDrop}"
-                  >
-                    ${this._isDragDropMode ? "🔒" : "✋"}
-                  </button>
-                `
-              : ""}
-            <button
-              class="view-toggle-btn"
-              @click=${this._toggleViewMode}
-              title="${this._isCompactView
-                ? this._translations.ui.toggleFullView
-                : this._translations.ui.toggleCompactView}"
-            >
-              ${this._isCompactView ? "⬜" : "▭"}
-            </button>
-            <button
-              class="export-btn"
-              @click=${this._exportSchedule}
-              title="${this._translations.ui.exportTooltip}"
-              ?disabled=${!this._scheduleData}
-            >
-              ⬇️
-            </button>
-            <button
-              class="import-btn"
-              @click=${this._importSchedule}
-              title="${this._translations.ui.importTooltip}"
-            >
-              ⬆️
-            </button>
-          </div>
+        </div>
+        <div class="header-controls">
+          ${this._config.show_profile_selector && this._availableProfiles.length > 0
+            ? html`
+                <select
+                  class="profile-selector"
+                  @change=${this._handleProfileChange}
+                  .value=${this._currentProfile || ""}
+                >
+                  ${this._availableProfiles.map(
+                    (profile) => html`
+                      <option value=${profile} ?selected=${profile === this._currentProfile}>
+                        ${profile}
+                      </option>
+                    `,
+                  )}
+                </select>
+              `
+            : ""}
+          ${this._config?.editable
+            ? html`
+                <button
+                  class="dragdrop-toggle-btn ${this._isDragDropMode ? "active" : ""}"
+                  @click=${this._toggleDragDropMode}
+                  title="${this._isDragDropMode
+                    ? this._translations.ui.disableDragDrop
+                    : this._translations.ui.enableDragDrop}"
+                >
+                  ${this._isDragDropMode ? "🔒" : "✋"}
+                </button>
+              `
+            : ""}
+          <button
+            class="view-toggle-btn"
+            @click=${this._toggleViewMode}
+            title="${this._isCompactView
+              ? this._translations.ui.toggleFullView
+              : this._translations.ui.toggleCompactView}"
+          >
+            ${this._isCompactView ? "⬜" : "▭"}
+          </button>
+          <button
+            class="export-btn"
+            @click=${this._exportSchedule}
+            title="${this._translations.ui.exportTooltip}"
+            ?disabled=${!this._scheduleData}
+          >
+            ⬇️
+          </button>
+          <button
+            class="import-btn"
+            @click=${this._importSchedule}
+            title="${this._translations.ui.importTooltip}"
+          >
+            ⬆️
+          </button>
         </div>
 
         <div class="card-content">
@@ -1139,23 +1152,17 @@ export class HomematicScheduleCard extends LitElement {
   private _renderScheduleView() {
     if (!this._scheduleData) return html``;
 
-    // Generate time axis labels (every 3 hours: 00:00, 03:00, 06:00, ...)
-    const timeLabels = [];
-    for (let hour = 0; hour <= 24; hour += 3) {
-      timeLabels.push({
-        hour,
-        label: `${hour.toString().padStart(2, "0")}:00`,
-        position: (hour / 24) * 100,
-      });
-    }
-
     return html`
-      <div class="schedule-container ${this._isCompactView ? "compact" : ""}">
+      <div
+        class="schedule-container ${this._isCompactView ? "compact" : ""} ${this._isDragDropMode
+          ? "drag-drop-mode"
+          : ""}"
+      >
         <!-- Time axis on the left -->
         <div class="time-axis">
           <div class="time-axis-header"></div>
           <div class="time-axis-labels">
-            ${timeLabels.map(
+            ${TIME_LABELS.map(
               (time) => html`
                 <div class="time-label" style="top: ${time.position}%">${time.label}</div>
               `,
@@ -1470,22 +1477,23 @@ export class HomematicScheduleCard extends LitElement {
       }
 
       .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
+        display: block;
+        margin-bottom: 8px;
       }
 
       .name {
         font-size: 24px;
         font-weight: 400;
         color: var(--primary-text-color);
+        margin-bottom: 8px;
       }
 
       .header-controls {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
+        margin-bottom: 24px;
       }
 
       .profile-selector {
@@ -1549,7 +1557,10 @@ export class HomematicScheduleCard extends LitElement {
         display: flex;
         gap: 8px;
         min-height: 400px;
-        overflow: visible;
+        overflow-x: auto;
+        overflow-y: visible;
+        width: 100%;
+        box-sizing: border-box;
       }
 
       /* Time axis on the left */
@@ -1582,9 +1593,10 @@ export class HomematicScheduleCard extends LitElement {
 
       .schedule-grid {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 8px;
         flex: 1;
+        min-width: 0;
         overflow: visible;
         position: relative;
       }
@@ -1630,6 +1642,7 @@ export class HomematicScheduleCard extends LitElement {
         z-index: 100;
         transform: translateY(-50%);
         box-shadow: 0 0 4px rgba(255, 0, 0, 0.5);
+        will-change: top;
       }
 
       .current-time-indicator::before {
@@ -1657,9 +1670,19 @@ export class HomematicScheduleCard extends LitElement {
         cursor: pointer;
       }
 
+      .weekday-column.editable {
+        will-change: transform, box-shadow;
+      }
+
       .weekday-column.editable:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Disable hover effects when in drag & drop mode */
+      .schedule-container.drag-drop-mode .weekday-column.editable:hover {
+        transform: none;
+        box-shadow: none;
       }
 
       .weekday-header {
@@ -1704,6 +1727,7 @@ export class HomematicScheduleCard extends LitElement {
         opacity: 1;
         background-color: rgba(255, 255, 255, 0.3);
         animation: pulse 1s ease-in-out;
+        will-change: transform;
       }
 
       @keyframes pulse {
@@ -1751,6 +1775,16 @@ export class HomematicScheduleCard extends LitElement {
         visibility: visible;
       }
 
+      /* Disable hover effects when in drag & drop mode */
+      .schedule-container.drag-drop-mode .time-block:hover {
+        opacity: 1;
+      }
+
+      .schedule-container.drag-drop-mode .time-block:hover .time-block-tooltip {
+        opacity: 0;
+        visibility: hidden;
+      }
+
       .temperature {
         user-select: none;
         position: relative;
@@ -1765,6 +1799,7 @@ export class HomematicScheduleCard extends LitElement {
           0 0 30px rgba(255, 255, 255, 0.4);
         animation: pulse-glow 2s ease-in-out infinite;
         z-index: 10;
+        will-change: box-shadow;
       }
 
       @keyframes pulse-glow {
