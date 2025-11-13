@@ -1,0 +1,75 @@
+{
+  "name": "homematicip-local-climate-scheduler-card",
+  "version": "0.1.0",
+  "description": "Custom Lovelace card for Homematic thermostat schedules - HACS compatible",
+  "main": "dist/homematicip-local-climate-scheduler-card.js",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c --watch",
+    "serve": "rollup -c --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,js,json,md}\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json,md}\" \"*.{json,md}\"",
+    "validate": "npm run lint && npm run type-check && npm test && npm run build",
+    "prepare": "husky",
+    "pre-commit": "lint-staged"
+  },
+  "keywords": [
+    "homeassistant",
+    "lovelace",
+    "custom-card",
+    "homematic",
+    "schedule",
+    "climate",
+    "thermostat",
+    "hacs"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/issues"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card#readme",
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "lit": "^3.0.0",
+    "tslib": "^2.6.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "@types/jest": "^29.5.11",
+    "@typescript-eslint/eslint-plugin": "^6.18.0",
+    "@typescript-eslint/parser": "^6.18.0",
+    "eslint": "^8.56.0",
+    "husky": "^9.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.1.0",
+    "rollup": "^4.9.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.3"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "jest --bail --findRelatedTests --passWithNoTests"
+    ],
+    "*.{ts,js,json,md}": [
+      "prettier --write"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+*.log
+package-lock.json
+.nyc_output/
+homematicip-local-climate-scheduler-card.js

@@ -1,0 +1,14 @@
+src/
+.github/
+node_modules/
+coverage/
+*.test.ts
+*.spec.ts
+.eslintrc.js
+jest.config.js
+rollup.config.mjs
+tsconfig.json
+.editorconfig
+.gitignore
+CONTRIBUTING.md
+CHANGELOG.md
