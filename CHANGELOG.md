@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-11-13
+
+### Changed
+
+- Disabled mouse hover effects (weekday column lift animation and time block tooltips) when drag & drop mode is active to prevent visual interference with drag operations
+
+### Performance
+
+- Optimized rendering performance with static TIME_LABELS constant
+- Added CSS `will-change` properties for animated elements (current-time-indicator, weekday-column.editable, copy-btn.active, time-block.active)
+- Improved browser rendering pipeline for frequently animated components
+
 ## [0.2.0] - 2025-11-13
 
 ### Added
@@ -183,6 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Jest for testing
 - GitHub Actions for CI/CD
 
-[Unreleased]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/releases/tag/0.1.0

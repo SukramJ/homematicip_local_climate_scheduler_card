@@ -1153,7 +1153,11 @@ export class HomematicScheduleCard extends LitElement {
     if (!this._scheduleData) return html``;
 
     return html`
-      <div class="schedule-container ${this._isCompactView ? "compact" : ""}">
+      <div
+        class="schedule-container ${this._isCompactView ? "compact" : ""} ${this._isDragDropMode
+          ? "drag-drop-mode"
+          : ""}"
+      >
         <!-- Time axis on the left -->
         <div class="time-axis">
           <div class="time-axis-header"></div>
@@ -1675,6 +1679,12 @@ export class HomematicScheduleCard extends LitElement {
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
       }
 
+      /* Disable hover effects when in drag & drop mode */
+      .schedule-container.drag-drop-mode .weekday-column.editable:hover {
+        transform: none;
+        box-shadow: none;
+      }
+
       .weekday-header {
         padding: 4px 8px;
         display: flex;
@@ -1763,6 +1773,16 @@ export class HomematicScheduleCard extends LitElement {
       .time-block:hover .time-block-tooltip {
         opacity: 1;
         visibility: visible;
+      }
+
+      /* Disable hover effects when in drag & drop mode */
+      .schedule-container.drag-drop-mode .time-block:hover {
+        opacity: 1;
+      }
+
+      .schedule-container.drag-drop-mode .time-block:hover .time-block-tooltip {
+        opacity: 0;
+        visibility: hidden;
       }
 
       .temperature {
