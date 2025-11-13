@@ -131,7 +131,7 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   public getCardSize(): number {
-    return 6;
+    return 12;
   }
 
   public connectedCallback(): void {
@@ -1059,62 +1059,62 @@ export class HomematicScheduleCard extends LitElement {
             entityState.attributes.friendly_name ||
             this._translations.ui.schedule}
           </div>
-          <div class="header-controls">
-            ${this._config.show_profile_selector && this._availableProfiles.length > 0
-              ? html`
-                  <select
-                    class="profile-selector"
-                    @change=${this._handleProfileChange}
-                    .value=${this._currentProfile || ""}
-                  >
-                    ${this._availableProfiles.map(
-                      (profile) => html`
-                        <option value=${profile} ?selected=${profile === this._currentProfile}>
-                          ${profile}
-                        </option>
-                      `,
-                    )}
-                  </select>
-                `
-              : ""}
-            ${this._config?.editable
-              ? html`
-                  <button
-                    class="dragdrop-toggle-btn ${this._isDragDropMode ? "active" : ""}"
-                    @click=${this._toggleDragDropMode}
-                    title="${this._isDragDropMode
-                      ? this._translations.ui.disableDragDrop
-                      : this._translations.ui.enableDragDrop}"
-                  >
-                    ${this._isDragDropMode ? "🔒" : "✋"}
-                  </button>
-                `
-              : ""}
-            <button
-              class="view-toggle-btn"
-              @click=${this._toggleViewMode}
-              title="${this._isCompactView
-                ? this._translations.ui.toggleFullView
-                : this._translations.ui.toggleCompactView}"
-            >
-              ${this._isCompactView ? "⬜" : "▭"}
-            </button>
-            <button
-              class="export-btn"
-              @click=${this._exportSchedule}
-              title="${this._translations.ui.exportTooltip}"
-              ?disabled=${!this._scheduleData}
-            >
-              ⬇️
-            </button>
-            <button
-              class="import-btn"
-              @click=${this._importSchedule}
-              title="${this._translations.ui.importTooltip}"
-            >
-              ⬆️
-            </button>
-          </div>
+        </div>
+        <div class="header-controls">
+          ${this._config.show_profile_selector && this._availableProfiles.length > 0
+            ? html`
+                <select
+                  class="profile-selector"
+                  @change=${this._handleProfileChange}
+                  .value=${this._currentProfile || ""}
+                >
+                  ${this._availableProfiles.map(
+                    (profile) => html`
+                      <option value=${profile} ?selected=${profile === this._currentProfile}>
+                        ${profile}
+                      </option>
+                    `,
+                  )}
+                </select>
+              `
+            : ""}
+          ${this._config?.editable
+            ? html`
+                <button
+                  class="dragdrop-toggle-btn ${this._isDragDropMode ? "active" : ""}"
+                  @click=${this._toggleDragDropMode}
+                  title="${this._isDragDropMode
+                    ? this._translations.ui.disableDragDrop
+                    : this._translations.ui.enableDragDrop}"
+                >
+                  ${this._isDragDropMode ? "🔒" : "✋"}
+                </button>
+              `
+            : ""}
+          <button
+            class="view-toggle-btn"
+            @click=${this._toggleViewMode}
+            title="${this._isCompactView
+              ? this._translations.ui.toggleFullView
+              : this._translations.ui.toggleCompactView}"
+          >
+            ${this._isCompactView ? "⬜" : "▭"}
+          </button>
+          <button
+            class="export-btn"
+            @click=${this._exportSchedule}
+            title="${this._translations.ui.exportTooltip}"
+            ?disabled=${!this._scheduleData}
+          >
+            ⬇️
+          </button>
+          <button
+            class="import-btn"
+            @click=${this._importSchedule}
+            title="${this._translations.ui.importTooltip}"
+          >
+            ⬆️
+          </button>
         </div>
 
         <div class="card-content">
@@ -1470,22 +1470,23 @@ export class HomematicScheduleCard extends LitElement {
       }
 
       .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
+        display: block;
+        margin-bottom: 8px;
       }
 
       .name {
         font-size: 24px;
         font-weight: 400;
         color: var(--primary-text-color);
+        margin-bottom: 8px;
       }
 
       .header-controls {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
+        margin-bottom: 24px;
       }
 
       .profile-selector {
@@ -1549,7 +1550,10 @@ export class HomematicScheduleCard extends LitElement {
         display: flex;
         gap: 8px;
         min-height: 400px;
-        overflow: visible;
+        overflow-x: auto;
+        overflow-y: visible;
+        width: 100%;
+        box-sizing: border-box;
       }
 
       /* Time axis on the left */
@@ -1582,9 +1586,10 @@ export class HomematicScheduleCard extends LitElement {
 
       .schedule-grid {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 8px;
         flex: 1;
+        min-width: 0;
         overflow: visible;
         position: relative;
       }
