@@ -69,7 +69,9 @@ function t(t,e,i,o){var s,r=arguments.length,n=r<3?e:null===o?o=Object.getOwnPro
           </div>
         </ha-card>
       `}_renderScheduleView(){return this._scheduleData?W`
-      <div class="schedule-container ${this._isCompactView?"compact":""} ${this._isDragDropMode?"drag-drop-mode":""}">
+      <div
+        class="schedule-container ${this._isCompactView?"compact":""} ${this._isDragDropMode?"drag-drop-mode":""}"
+      >
         <!-- Time axis on the left -->
         <div class="time-axis">
           <div class="time-axis-header"></div>
