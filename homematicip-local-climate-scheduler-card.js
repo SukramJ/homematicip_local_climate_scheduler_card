@@ -111,44 +111,48 @@ function t(t,e,i,s){var o,r=arguments.length,n=r<3?e:null===s?s=Object.getOwnPro
                   @click=${()=>this._config?.editable&&this._handleWeekdayClick(t)}
                 >
                   ${e.map((i,s)=>{const o=this._isBlockActive(t,i);let r;if(this._config?.show_gradient){const t=s>0?e[s-1].temperature:null,o=s<e.length-1?e[s+1].temperature:null,n=function(t,e,i){const s=vt(t);if(null===e&&null===i)return s;if(null!==e&&null===i)return`linear-gradient(to bottom, ${vt(e)}, ${s})`;if(null===e&&null!==i)return`linear-gradient(to bottom, ${s}, ${vt(i)})`;if(null!==e&&null!==i)return`linear-gradient(to bottom, ${vt(e)}, ${s} 50%, ${vt(i)})`;return s}(i.temperature,t,o);r=`background: ${n};`}else r=`background-color: ${vt(i.temperature)};`;return W`
-                        <div
-                          class="time-block ${o?"active":""} ${this._pendingChanges.has(t)?"pending":""}"
-                          style="
+                      <div
+                        class="time-block ${o?"active":""} ${this._pendingChanges.has(t)?"pending":""}"
+                        style="
                             height: ${(i.endMinutes-i.startMinutes)/1440*100}%;
                             ${r}
                           "
-                        >
-                          ${this._config?.editable&&this._isDragDropMode&&s>0?W`
-                                <div
-                                  class="drag-handle drag-handle-top"
-                                  @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"start")}}
-                                  @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"start")}}
-                                ></div>
-                              `:""}
-                          ${this._config?.editable&&this._isDragDropMode?W`
-                                <div
-                                  class="temperature-drag-area"
-                                  @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"temperature")}}
-                                  @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"temperature")}}
-                                >
-                                  ${this._config?.show_temperature?W`<span class="temperature">${i.temperature.toFixed(1)}°</span>`:""}
-                                </div>
-                              `:this._config?.show_temperature?W`<span class="temperature">${i.temperature.toFixed(1)}°</span>`:""}
-                          <div class="time-block-tooltip">
-                            <div class="tooltip-time">${i.startTime} - ${i.endTime}</div>
-                            <div class="tooltip-temp">
-                              ${function(t,e="°C"){return`${t.toFixed(1)}${e}`}(i.temperature,this._config?.temperature_unit)}
-                            </div>
+                      >
+                        ${this._config?.editable&&this._isDragDropMode&&s>0?W`
+                              <div
+                                class="drag-handle drag-handle-top"
+                                @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"start")}}
+                                @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"start")}}
+                              ></div>
+                            `:""}
+                        ${this._config?.editable&&this._isDragDropMode?W`
+                              <div
+                                class="temperature-drag-area"
+                                @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"temperature")}}
+                                @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"temperature")}}
+                              >
+                                ${this._config?.show_temperature?W`<span class="temperature"
+                                      >${i.temperature.toFixed(1)}°</span
+                                    >`:""}
+                              </div>
+                            `:this._config?.show_temperature?W`<span class="temperature"
+                                >${i.temperature.toFixed(1)}°</span
+                              >`:""}
+                        <div class="time-block-tooltip">
+                          <div class="tooltip-time">${i.startTime} - ${i.endTime}</div>
+                          <div class="tooltip-temp">
+                            ${function(t,e="°C"){return`${t.toFixed(1)}${e}`}(i.temperature,this._config?.temperature_unit)}
                           </div>
-                          ${this._config?.editable&&this._isDragDropMode&&s<e.length-1?W`
-                                <div
-                                  class="drag-handle drag-handle-bottom"
-                                  @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"end")}}
-                                  @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"end")}}
-                                ></div>
-                              `:""}
                         </div>
-                      `})}
+                        ${this._config?.editable&&this._isDragDropMode&&s<e.length-1?W`
+                              <div
+                                class="drag-handle drag-handle-bottom"
+                                @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"end")}}
+                                @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"end")}}
+                              ></div>
+                            `:""}
+                      </div>
+                    `})}
                 </div>
               </div>
             `})}
@@ -174,12 +178,13 @@ function t(t,e,i,s){var o,r=arguments.length,n=r<3?e:null===s?s=Object.getOwnPro
               </div>
             </div>
           `:""}
-
       ${this._config?.editable&&0===this._pendingChanges.size?W`<div class="hint">${this._translations.ui.clickToEdit}</div>`:""}
     `}_renderEditor(){return this._editingWeekday&&this._editingBlocks?W`
       <div class="editor">
         <div class="editor-header">
-          <h3>${xt(this._translations.ui.edit,{weekday:this._getWeekdayLabel(this._editingWeekday)})}</h3>
+          <h3>
+            ${xt(this._translations.ui.edit,{weekday:this._getWeekdayLabel(this._editingWeekday)})}
+          </h3>
           <div class="editor-actions">
             <button
               class="undo-btn"
@@ -246,12 +251,20 @@ function t(t,e,i,s){var o,r=arguments.length,n=r<3?e:null===s?s=Object.getOwnPro
                 ></div>
               </div>
             `})}
-          ${this._editingBlocks.length<12?W` <button class="add-btn" @click=${this._addTimeBlock}>${this._translations.ui.addTimeBlock}</button> `:""}
+          ${this._editingBlocks.length<12?W`
+                <button class="add-btn" @click=${this._addTimeBlock}>
+                  ${this._translations.ui.addTimeBlock}
+                </button>
+              `:""}
         </div>
 
         <div class="editor-footer">
-          <button class="cancel-btn" @click=${this._closeEditor}>${this._translations.ui.cancel}</button>
-          <button class="save-btn" @click=${this._saveSchedule}>${this._translations.ui.save}</button>
+          <button class="cancel-btn" @click=${this._closeEditor}>
+            ${this._translations.ui.cancel}
+          </button>
+          <button class="save-btn" @click=${this._saveSchedule}>
+            ${this._translations.ui.save}
+          </button>
         </div>
       </div>
     `:W``}static get styles(){return n`
@@ -562,7 +575,8 @@ function t(t,e,i,s){var o,r=arguments.length,n=r<3?e:null===s?s=Object.getOwnPro
       }
 
       @keyframes pulse-glow {
-        0%, 100% {
+        0%,
+        100% {
           box-shadow:
             inset 0 0 0 3px rgba(255, 255, 255, 0.9),
             0 0 15px rgba(255, 255, 255, 0.5),
@@ -590,7 +604,9 @@ function t(t,e,i,s){var o,r=arguments.length,n=r<3?e:null===s?s=Object.getOwnPro
         white-space: nowrap;
         opacity: 0;
         visibility: hidden;
-        transition: opacity 0.2s, visibility 0.2s;
+        transition:
+          opacity 0.2s,
+          visibility 0.2s;
         z-index: 1000;
         pointer-events: none;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
@@ -796,7 +812,9 @@ function t(t,e,i,s){var o,r=arguments.length,n=r<3?e:null===s?s=Object.getOwnPro
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        transition: background-color 0.2s, opacity 0.2s;
+        transition:
+          background-color 0.2s,
+          opacity 0.2s;
       }
 
       .undo-btn:hover:not(:disabled),
