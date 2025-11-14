@@ -85,7 +85,9 @@ npm run lint:fix
 
    ```yaml
    type: custom:homematic-schedule-card
-   entity: climate.your_thermostat
+   entities:
+     - climate.living_room
+     - climate.bedroom
    ```
 
 5. **Clear browser cache**: Ctrl+F5 (Cmd+Shift+R on Mac)

@@ -41,6 +41,8 @@ export default {
     commonjs(),
     typescript({
       tsconfig: "./tsconfig.json",
+      sourceMap: false,
+      inlineSources: false,
     }),
     json(),
     terser({

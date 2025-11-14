@@ -1,6 +1,7 @@
 export interface HomematicScheduleCardConfig {
   type: string;
-  entity: string;
+  entity?: string;
+  entities?: string[];
   name?: string;
   profile?: string;
   show_profile_selector?: boolean;

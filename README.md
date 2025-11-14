@@ -47,6 +47,20 @@ type: custom:homematic-schedule-card
 entity: climate.your_thermostat
 ```
 
+### Multiple Entities
+
+Define `entities` instead of `entity` to switch between multiple thermostats via the header dropdown:
+
+```yaml
+type: custom:homematic-schedule-card
+entities:
+  - climate.living_room
+  - climate.bedroom
+  - climate.office
+```
+
+When only one entity is provided, the dropdown is hidden and the card shows the friendly name instead.
+
 ### Full Configuration
 
 ```yaml
@@ -58,20 +72,23 @@ editable: true
 show_temperature: true
 temperature_unit: "°C"
 hour_format: "24"
+time_step_minutes: 15
 ```
 
 ### Configuration Options
 
-| Option                  | Type    | Default        | Description                                |
-| ----------------------- | ------- | -------------- | ------------------------------------------ |
-| `entity`                | string  | **Required**   | Entity ID of your Homematic climate device |
-| `name`                  | string  | Entity name    | Custom name for the card                   |
-| `profile`               | string  | Active profile | Force display of a specific profile        |
-| `show_profile_selector` | boolean | `true`         | Show/hide the profile selector dropdown    |
-| `editable`              | boolean | `true`         | Enable/disable schedule editing            |
-| `show_temperature`      | boolean | `true`         | Show/hide temperature values on blocks     |
-| `temperature_unit`      | string  | `°C`           | Temperature unit to display                |
-| `hour_format`           | string  | `24`           | Time format: `12` or `24` hour             |
+| Option                  | Type     | Default        | Description                                                       |
+| ----------------------- | -------- | -------------- | ----------------------------------------------------------------- |
+| `entity`                | string   | —              | Single entity ID (fallback when `entities` not provided)          |
+| `entities`              | string[] | —              | List of entity IDs shown in a dropdown selector                   |
+| `name`                  | string   | Entity name    | Custom name for the card (hidden when multi-entity selector used) |
+| `profile`               | string   | Active profile | Force display of a specific profile                               |
+| `show_profile_selector` | boolean  | `true`         | Show/hide the profile selector dropdown                           |
+| `editable`              | boolean  | `true`         | Enable/disable schedule editing                                   |
+| `show_temperature`      | boolean  | `true`         | Show/hide temperature values on blocks                            |
+| `temperature_unit`      | string   | `°C`           | Temperature unit to display                                       |
+| `hour_format`           | string   | `24`           | Time format: `12` or `24` hour                                    |
+| `time_step_minutes`     | number   | `15`           | Time picker step size in minutes for the schedule editor          |
 
 ## Usage
 
