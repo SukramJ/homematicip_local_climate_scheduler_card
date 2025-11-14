@@ -47,6 +47,7 @@ export class HomematicScheduleCard extends LitElement {
   @state() private _currentProfile?: string;
   @state() private _scheduleData?: ProfileData;
   @state() private _availableProfiles: string[] = [];
+  @state() private _activeEntityId?: string;
   @state() private _editingWeekday?: Weekday;
   @state() private _editingBlocks?: TimeBlock[];
   @state() private _copiedSchedule?: { weekday: Weekday; blocks: TimeBlock[] };
@@ -87,9 +88,32 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   public setConfig(config: HomematicScheduleCardConfig): void {
-    if (!config.entity) {
-      throw new Error("You need to define an entity");
+    const entityIds: string[] = [];
+    const addEntity = (entityId?: string) => {
+      if (!entityId) return;
+      const trimmed = entityId.trim();
+      if (!trimmed) return;
+      if (!entityIds.includes(trimmed)) {
+        entityIds.push(trimmed);
+      }
+    };
+
+    addEntity(config.entity);
+    if (Array.isArray(config.entities)) {
+      config.entities.forEach((entityId) => addEntity(entityId));
     }
+
+    if (entityIds.length === 0) {
+      throw new Error("You need to define at least one entity");
+    }
+
+    entityIds.sort((a, b) => a.localeCompare(b));
+
+    const previousEntity = this._activeEntityId;
+    const fallbackEntity = entityIds[0];
+    const nextActiveEntity =
+      previousEntity && entityIds.includes(previousEntity) ? previousEntity : fallbackEntity;
+
     this._config = {
       show_profile_selector: true,
       editable: true,
@@ -98,7 +122,16 @@ export class HomematicScheduleCard extends LitElement {
       hour_format: "24",
       time_step_minutes: 15,
       ...config,
+      entity: fallbackEntity,
+      entities: [...entityIds],
     };
+
+    this._activeEntityId = nextActiveEntity;
+    this._pendingChanges.clear();
+    this._copiedSchedule = undefined;
+    this._editingWeekday = undefined;
+    this._editingBlocks = undefined;
+    this._parsedScheduleCache = new WeakMap();
 
     // Set language from config or detect from Home Assistant
     this._updateLanguage();
@@ -154,6 +187,27 @@ export class HomematicScheduleCard extends LitElement {
       this._weekdayShortLabelMap = this._createWeekdayLabelMap("short");
     }
     return this._weekdayShortLabelMap[weekday];
+  }
+
+  private _getEntityOptions(): string[] {
+    if (!this._config) {
+      return [];
+    }
+    if (this._config.entities?.length) {
+      return [...this._config.entities].sort((a, b) => a.localeCompare(b));
+    }
+    return this._config.entity ? [this._config.entity] : [];
+  }
+
+  private _getActiveEntityId(): string | undefined {
+    const entities = this._getEntityOptions();
+    if (entities.length === 0) {
+      return undefined;
+    }
+    if (this._activeEntityId && entities.includes(this._activeEntityId)) {
+      return this._activeEntityId;
+    }
+    return entities[0];
   }
 
   private _formatValidationParams(params?: Record<string, string>): Record<string, string> {
@@ -353,8 +407,13 @@ export class HomematicScheduleCard extends LitElement {
         return true;
       }
 
-      const oldEntity = oldHass.states?.[this._config.entity];
-      const newEntity = newHass.states?.[this._config.entity];
+      const entityId = this._getActiveEntityId();
+      if (!entityId) {
+        return true;
+      }
+
+      const oldEntity = oldHass.states?.[entityId];
+      const newEntity = newHass.states?.[entityId];
 
       // Update if entity state or attributes changed
       if (oldEntity !== newEntity) {
@@ -398,14 +457,31 @@ export class HomematicScheduleCard extends LitElement {
   private _updateFromEntity(): void {
     if (!this.hass || !this._config) return;
 
-    const entityState = this.hass.states?.[this._config.entity];
-    if (!entityState) return;
+    const entityId = this._getActiveEntityId();
+    if (!entityId) {
+      this._currentProfile = undefined;
+      this._scheduleData = undefined;
+      this._availableProfiles = [];
+      this._pendingChanges.clear();
+      return;
+    }
+
+    const entityState = this.hass.states?.[entityId];
+    if (!entityState) {
+      this._currentProfile = undefined;
+      this._scheduleData = undefined;
+      this._availableProfiles = [];
+      this._pendingChanges.clear();
+      return;
+    }
 
     const attrs = entityState.attributes as ScheduleEntityAttributes;
 
     this._currentProfile = this._config.profile || attrs.active_profile;
     this._scheduleData = attrs.schedule_data;
-    this._availableProfiles = attrs.available_profiles || [];
+    this._availableProfiles = (attrs.available_profiles || [])
+      .slice()
+      .sort((a, b) => a.localeCompare(b));
 
     // Update temperature range from backend (with fallback to default values)
     this._minTemp = attrs.min_temp ?? 5.0;
@@ -441,11 +517,12 @@ export class HomematicScheduleCard extends LitElement {
     const select = e.target as HTMLSelectElement;
     const newProfile = select.value;
 
-    if (!this._config || !this.hass) return;
+    const entityId = this._getActiveEntityId();
+    if (!this._config || !this.hass || !entityId) return;
 
     try {
       await this.hass.callService("homematicip_local", "set_schedule_active_profile", {
-        entity_id: this._config.entity,
+        entity_id: entityId,
         profile: newProfile,
       });
 
@@ -660,7 +737,14 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   private async _savePendingChanges(): Promise<void> {
-    if (!this._config || !this.hass || !this._currentProfile || this._pendingChanges.size === 0) {
+    const entityId = this._getActiveEntityId();
+    if (
+      !this._config ||
+      !this.hass ||
+      !this._currentProfile ||
+      this._pendingChanges.size === 0 ||
+      !entityId
+    ) {
       return;
     }
 
@@ -686,7 +770,7 @@ export class HomematicScheduleCard extends LitElement {
         const backendData = convertToBackendFormat(weekdayData);
 
         await this.hass.callService("homematicip_local", "set_schedule_profile_weekday", {
-          entity_id: this._config.entity,
+          entity_id: entityId,
           profile: this._currentProfile,
           weekday: weekday,
           weekday_data: backendData,
@@ -735,6 +819,11 @@ export class HomematicScheduleCard extends LitElement {
       return;
     }
 
+    const entityId = this._getActiveEntityId();
+    if (!entityId) {
+      return;
+    }
+
     // Convert blocks to weekday data (automatically sorts by time)
     const weekdayData = timeBlocksToWeekdayData(this._editingBlocks);
 
@@ -758,7 +847,7 @@ export class HomematicScheduleCard extends LitElement {
 
     try {
       await this.hass.callService("homematicip_local", "set_schedule_profile_weekday", {
-        entity_id: this._config.entity,
+        entity_id: entityId,
         profile: this._currentProfile,
         weekday: this._editingWeekday,
         weekday_data: backendData,
@@ -817,6 +906,11 @@ export class HomematicScheduleCard extends LitElement {
       return;
     }
 
+    const entityId = this._getActiveEntityId();
+    if (!entityId) {
+      return;
+    }
+
     // Convert copied blocks to weekday data
     const weekdayData = timeBlocksToWeekdayData(this._copiedSchedule.blocks);
 
@@ -840,7 +934,7 @@ export class HomematicScheduleCard extends LitElement {
 
     try {
       await this.hass.callService("homematicip_local", "set_schedule_profile_weekday", {
-        entity_id: this._config.entity,
+        entity_id: entityId,
         profile: this._currentProfile,
         weekday: weekday,
         weekday_data: backendData,
@@ -964,7 +1058,8 @@ export class HomematicScheduleCard extends LitElement {
         }
 
         // Apply imported schedule
-        if (!this._config || !this.hass || !this._currentProfile) {
+        const entityId = this._getActiveEntityId();
+        if (!this._config || !this.hass || !this._currentProfile || !entityId) {
           return;
         }
 
@@ -983,7 +1078,7 @@ export class HomematicScheduleCard extends LitElement {
             if (weekdayData) {
               const backendData = convertToBackendFormat(weekdayData);
               await this.hass.callService("homematicip_local", "set_schedule_profile_weekday", {
-                entity_id: this._config.entity,
+                entity_id: entityId,
                 profile: this._currentProfile,
                 weekday: weekday,
                 weekday_data: backendData,
@@ -1101,12 +1196,29 @@ export class HomematicScheduleCard extends LitElement {
       return html``;
     }
 
-    const entityState = this.hass.states?.[this._config.entity];
+    const entityOptions = this._getEntityOptions();
+    const multipleEntities = entityOptions.length > 1;
+    const activeEntityId = this._getActiveEntityId();
+    const entityState = activeEntityId ? this.hass.states?.[activeEntityId] : undefined;
+
+    const headerContent = multipleEntities
+      ? this._renderEntitySelector(entityOptions, activeEntityId)
+      : this._config.name ||
+        entityState?.attributes.friendly_name ||
+        this._translations.ui.schedule;
+
     if (!entityState) {
       return html`
         <ha-card>
-          <div class="error">
-            ${formatString(this._translations.ui.entityNotFound, { entity: this._config.entity })}
+          <div class="card-header">
+            <div class="name">${headerContent}</div>
+          </div>
+          <div class="card-content">
+            <div class="error">
+              ${formatString(this._translations.ui.entityNotFound, {
+                entity: activeEntityId || this._translations.ui.schedule,
+              })}
+            </div>
           </div>
         </ha-card>
       `;
@@ -1115,11 +1227,7 @@ export class HomematicScheduleCard extends LitElement {
     return html`
       <ha-card>
         <div class="card-header">
-          <div class="name">
-            ${this._config.name ||
-            entityState.attributes.friendly_name ||
-            this._translations.ui.schedule}
-          </div>
+          <div class="name">${headerContent}</div>
         </div>
         <div class="header-controls">
           ${this._config.show_profile_selector && this._availableProfiles.length > 0
@@ -1409,6 +1517,45 @@ export class HomematicScheduleCard extends LitElement {
     `;
   }
 
+  private _renderEntitySelector(entityIds: string[], activeEntityId?: string) {
+    const selected =
+      activeEntityId && entityIds.includes(activeEntityId) ? activeEntityId : entityIds[0];
+    return html`
+      <select
+        class="profile-selector entity-selector"
+        @change=${this._handleEntitySelection}
+        .value=${selected}
+      >
+        ${[...entityIds]
+          .sort((a, b) => a.localeCompare(b))
+          .map((entityId) => {
+            const label = this.hass?.states?.[entityId]?.attributes.friendly_name || entityId;
+            return html`<option value=${entityId}>${label}</option>`;
+          })}
+      </select>
+    `;
+  }
+
+  private _handleEntitySelection(e: Event): void {
+    const select = e.target as HTMLSelectElement;
+    const entityId = select.value;
+    if (!entityId || entityId === this._getActiveEntityId()) {
+      return;
+    }
+
+    this._activeEntityId = entityId;
+    this._pendingChanges.clear();
+    this._editingWeekday = undefined;
+    this._editingBlocks = undefined;
+    this._copiedSchedule = undefined;
+    this._validationWarnings = [];
+    this._isDragDropMode = false;
+    this._isDragging = false;
+    this._dragState = undefined;
+    this._parsedScheduleCache = new WeakMap();
+    this._updateFromEntity();
+  }
+
   private _renderEditor() {
     if (!this._editingWeekday || !this._editingBlocks) return html``;
 
@@ -1570,6 +1717,11 @@ export class HomematicScheduleCard extends LitElement {
         color: var(--primary-text-color);
         font-size: 14px;
         cursor: pointer;
+      }
+
+      .entity-selector {
+        width: 100%;
+        font-size: 16px;
       }
 
       .view-toggle-btn {

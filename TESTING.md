@@ -197,6 +197,41 @@ A block is active when:
 - ✅ `validateProfileData()` rejects invalid slot data (backwards time, wrong slot count, etc.)
 - ✅ `validateProfileData()` accepts valid complete schedule data
 
+### 7. Multi-Entity Selector
+
+**Feature**: When multiple entities are configured, the card header shows a dropdown to switch the active schedule; single-entity setups continue to show the friendly name.
+
+**How to Test**:
+
+1. Configure the card with multiple entities:
+
+   ```yaml
+   type: custom:homematic-schedule-card
+   entities:
+     - climate.living_room
+     - climate.bedroom
+     - climate.office
+   ```
+
+2. Open the card.
+   - **Expected**: Header contains a select element listing all configured entities.
+   - **Expected**: The initial selection matches the first available entity or the last active entity stored in the card state.
+3. Switch to another entity via the dropdown.
+   - **Expected**: Schedule grid reloads with the newly selected entity's data.
+   - **Expected**: Pending edits, copy buffers, drag mode, and validation warnings reset during the switch.
+4. Configure the card with only one entity (either via `entity` or `entities: [id]`).
+   - **Expected**: Header falls back to showing the friendly name or custom `name`.
+   - **Expected**: No dropdown is rendered.
+
+**Test Cases**:
+
+- ✅ Header selector renders only when more than one entity is configured.
+- ✅ Dropdown labels use each entity’s `friendly_name` when available.
+- ✅ Switching entities updates `_activeEntityId`, loads fresh schedule data, and clears cached blocks.
+- ✅ Service calls (save, paste, import, profile change) target the currently selected entity.
+- ✅ Error message references the active entity if it becomes unavailable.
+- ✅ Single-entity configurations behave exactly as before (name text, no selector).
+
 ## Integration Testing
 
 ### End-to-End Workflow Test

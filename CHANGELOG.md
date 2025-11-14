@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable time step for time selection in detail editor via `time_step_minutes` configuration option
 - Time input field now uses step attribute to control minute increments (default: 15 minutes)
 - Support for custom time step values (e.g., 1, 5, 10, 15, 30 minutes) in editor time picker
+- Multiple entity support with a header drop-down to switch the currently edited schedule inline
 - Localized weekday labels now provide both short (Mo, Di, …) and long (Montag, Dienstag, …) forms for each language
 
 ### Changed
