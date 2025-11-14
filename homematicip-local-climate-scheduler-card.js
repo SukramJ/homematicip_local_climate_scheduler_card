@@ -85,79 +85,79 @@ function t(t,e,i,s){var o,n=arguments.length,r=n<3?e:null===s?s=Object.getOwnPro
         <!-- Schedule grid -->
         <div class="schedule-grid ${this._isCompactView?"compact":""}">
           ${ft($t,t=>t,t=>{if(!this._scheduleData[t])return H``;const e=this._getParsedBlocks(t),i=this._copiedSchedule?.weekday===t;return H`
-              <div class="weekday-column ${this._config?.editable?"editable":""}">
-                <div class="weekday-header">
-                  <div class="weekday-label">${this._getWeekdayLabel(t,"short")}</div>
-                  ${this._config?.editable?H`
-                        <div class="weekday-actions">
-                          <button
-                            class="copy-btn ${i?"active":""}"
-                            @click=${e=>{e.stopPropagation(),this._copySchedule(t)}}
-                            title="${this._translations.ui.copySchedule}"
-                          >
-                            📋
-                          </button>
-                          <button
-                            class="paste-btn"
-                            @click=${e=>{e.stopPropagation(),this._pasteSchedule(t)}}
-                            title="${this._translations.ui.pasteSchedule}"
-                            ?disabled=${!this._copiedSchedule}
-                          >
-                            📄
-                          </button>
-                        </div>
-                      `:""}
-                </div>
-                <div
-                  class="time-blocks"
-                  @click=${()=>this._config?.editable&&this._handleWeekdayClick(t)}
-                >
-                  ${ft(e,t=>t.slot,(i,s)=>{const o=this._isBlockActive(t,i);let n;if(this._config?.show_gradient){n=`background: ${function(t,e,i){const s=Dt(t);return null===e&&null===i?s:null!==e&&null===i?`linear-gradient(to bottom, ${Dt(e)}, ${s})`:null===e&&null!==i?`linear-gradient(to bottom, ${s}, ${Dt(i)})`:`linear-gradient(to bottom, ${Dt(e)}, ${s} 50%, ${Dt(i)})`}(i.temperature,s>0?e[s-1].temperature:null,s<e.length-1?e[s+1].temperature:null)};`}else n=`background-color: ${Dt(i.temperature)};`;return H`
-                        <div
-                          class="time-block ${o?"active":""} ${this._pendingChanges.has(t)?"pending":""}"
-                          style="
+                <div class="weekday-column ${this._config?.editable?"editable":""}">
+                  <div class="weekday-header">
+                    <div class="weekday-label">${this._getWeekdayLabel(t,"short")}</div>
+                    ${this._config?.editable?H`
+                          <div class="weekday-actions">
+                            <button
+                              class="copy-btn ${i?"active":""}"
+                              @click=${e=>{e.stopPropagation(),this._copySchedule(t)}}
+                              title="${this._translations.ui.copySchedule}"
+                            >
+                              📋
+                            </button>
+                            <button
+                              class="paste-btn"
+                              @click=${e=>{e.stopPropagation(),this._pasteSchedule(t)}}
+                              title="${this._translations.ui.pasteSchedule}"
+                              ?disabled=${!this._copiedSchedule}
+                            >
+                              📄
+                            </button>
+                          </div>
+                        `:""}
+                  </div>
+                  <div
+                    class="time-blocks"
+                    @click=${()=>this._config?.editable&&this._handleWeekdayClick(t)}
+                  >
+                    ${ft(e,t=>t.slot,(i,s)=>{const o=this._isBlockActive(t,i);let n;if(this._config?.show_gradient){n=`background: ${function(t,e,i){const s=Dt(t);return null===e&&null===i?s:null!==e&&null===i?`linear-gradient(to bottom, ${Dt(e)}, ${s})`:null===e&&null!==i?`linear-gradient(to bottom, ${s}, ${Dt(i)})`:`linear-gradient(to bottom, ${Dt(e)}, ${s} 50%, ${Dt(i)})`}(i.temperature,s>0?e[s-1].temperature:null,s<e.length-1?e[s+1].temperature:null)};`}else n=`background-color: ${Dt(i.temperature)};`;return H`
+                          <div
+                            class="time-block ${o?"active":""} ${this._pendingChanges.has(t)?"pending":""}"
+                            style="
                               height: ${(i.endMinutes-i.startMinutes)/1440*100}%;
                               ${n}
                             "
-                        >
-                          ${this._config?.editable&&this._isDragDropMode&&s>0?H`
-                                <div
-                                  class="drag-handle drag-handle-top"
-                                  @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"start")}}
-                                  @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"start")}}
-                                ></div>
-                              `:""}
-                          ${this._config?.editable&&this._isDragDropMode?H`
-                                <div
-                                  class="temperature-drag-area"
-                                  @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"temperature")}}
-                                  @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"temperature")}}
-                                >
-                                  ${this._config?.show_temperature?H`<span class="temperature"
-                                        >${i.temperature.toFixed(1)}°</span
-                                      >`:""}
-                                </div>
-                              `:this._config?.show_temperature?H`<span class="temperature"
-                                  >${i.temperature.toFixed(1)}°</span
-                                >`:""}
-                          <div class="time-block-tooltip">
-                            <div class="tooltip-time">${i.startTime} - ${i.endTime}</div>
-                            <div class="tooltip-temp">
-                              ${function(t,e="°C"){return`${t.toFixed(1)}${e}`}(i.temperature,this._config?.temperature_unit)}
+                          >
+                            ${this._config?.editable&&this._isDragDropMode&&s>0?H`
+                                  <div
+                                    class="drag-handle drag-handle-top"
+                                    @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"start")}}
+                                    @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"start")}}
+                                  ></div>
+                                `:""}
+                            ${this._config?.editable&&this._isDragDropMode?H`
+                                  <div
+                                    class="temperature-drag-area"
+                                    @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"temperature")}}
+                                    @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"temperature")}}
+                                  >
+                                    ${this._config?.show_temperature?H`<span class="temperature"
+                                          >${i.temperature.toFixed(1)}°</span
+                                        >`:""}
+                                  </div>
+                                `:this._config?.show_temperature?H`<span class="temperature"
+                                    >${i.temperature.toFixed(1)}°</span
+                                  >`:""}
+                            <div class="time-block-tooltip">
+                              <div class="tooltip-time">${i.startTime} - ${i.endTime}</div>
+                              <div class="tooltip-temp">
+                                ${function(t,e="°C"){return`${t.toFixed(1)}${e}`}(i.temperature,this._config?.temperature_unit)}
+                              </div>
                             </div>
+                            ${this._config?.editable&&this._isDragDropMode&&s<e.length-1?H`
+                                  <div
+                                    class="drag-handle drag-handle-bottom"
+                                    @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"end")}}
+                                    @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"end")}}
+                                  ></div>
+                                `:""}
                           </div>
-                          ${this._config?.editable&&this._isDragDropMode&&s<e.length-1?H`
-                                <div
-                                  class="drag-handle drag-handle-bottom"
-                                  @mousedown=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"end")}}
-                                  @touchstart=${e=>{e.stopPropagation(),this._startDrag(e,t,s,"end")}}
-                                ></div>
-                              `:""}
-                        </div>
-                      `})}
+                        `})}
+                  </div>
                 </div>
-              </div>
-            `})}
+              `})}
 
           <!-- Current time indicator line -->
           <div class="current-time-indicator" style="top: ${this._currentTimePercent}%"></div>
@@ -215,7 +215,9 @@ function t(t,e,i,s){var o,n=arguments.length,r=n<3?e:null===s?s=Object.getOwnPro
                   <span class="warnings-title">${this._translations.warnings.title}</span>
                 </div>
                 <ul class="warnings-list">
-                  ${this._validationWarnings.map(t=>H`<li class="warning-item">${this._translateValidationMessage(t)}</li>`)}
+                  ${this._validationWarnings.map(t=>H`<li class="warning-item">
+                        ${this._translateValidationMessage(t)}
+                      </li>`)}
                 </ul>
               </div>
             `:""}
