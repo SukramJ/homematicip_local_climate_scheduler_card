@@ -43,7 +43,7 @@ A custom Lovelace card for Home Assistant to display and edit Homematic thermost
 ### Basic Configuration
 
 ```yaml
-type: custom:homematic-schedule-card
+type: custom:homematicip-local-climate-scheduler-card
 entity: climate.your_thermostat
 ```
 
@@ -52,7 +52,7 @@ entity: climate.your_thermostat
 Define `entities` instead of `entity` to switch between multiple thermostats via the header dropdown:
 
 ```yaml
-type: custom:homematic-schedule-card
+type: custom:homematicip-local-climate-scheduler-card
 entities:
   - climate.living_room
   - climate.bedroom
@@ -64,7 +64,7 @@ When only one entity is provided, the dropdown is hidden and the card shows the 
 ### Full Configuration
 
 ```yaml
-type: custom:homematic-schedule-card
+type: custom:homematicip-local-climate-scheduler-card
 entity: climate.living_room_thermostat
 name: Living Room Schedule
 show_profile_selector: true

@@ -38,7 +38,7 @@ resources:
 Add the card to your dashboard:
 
 ```yaml
-type: custom:homematic-schedule-card
+type: custom:homematicip-local-climate-scheduler-card
 entity: climate.your_thermostat
 name: Living Room Schedule
 show_profile_selector: true

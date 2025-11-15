@@ -21,7 +21,7 @@ function copyToRoot() {
 }
 
 export default {
-  input: "src/homematic-schedule-card.ts",
+  input: "src/homematicip-local-climate-scheduler-card.ts",
   output: {
     file: "dist/homematicip-local-climate-scheduler-card.js",
     format: "es",

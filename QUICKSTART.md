@@ -84,7 +84,7 @@ npm run lint:fix
 4. **Add card to dashboard**:
 
    ```yaml
-   type: custom:homematic-schedule-card
+   type: custom:homematicip-local-climate-scheduler-card
    entities:
      - climate.living_room
      - climate.bedroom
@@ -146,10 +146,10 @@ git commit -m "Fix: Bugfix description"
 
 ```
 src/
-├── homematic-schedule-card.ts  # Main component
-├── types.ts                    # Type definitions
-├── utils.ts                    # Utility functions
-└── *.test.ts                   # Unit tests
+├── homematicip-local-climate-scheduler-card.ts  # Main component
+├── types.ts                                     # Type definitions
+├── utils.ts                                     # Utility functions
+└── *.test.ts                                    # Unit tests
 
 dist/                           # Build output
 └── homematicip-local-climate-scheduler-card.js

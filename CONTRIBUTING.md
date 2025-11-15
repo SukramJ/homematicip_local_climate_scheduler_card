@@ -114,11 +114,11 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 ```
 .
 ├── src/
-│   ├── homematic-schedule-card.ts  # Main card component
-│   ├── types.ts                    # Type definitions
-│   ├── utils.ts                    # Utility functions
-│   ├── *.test.ts                   # Test files
-├── dist/                           # Build output
+│   ├── homematicip-local-climate-scheduler-card.ts  # Main card component
+│   ├── types.ts                                     # Type definitions
+│   ├── utils.ts                                     # Utility functions
+│   ├── *.test.ts                                    # Test files
+├── dist/                                            # Build output
 ├── .github/
 │   └── workflows/                  # CI/CD workflows
 ├── hacs.json                       # HACS configuration

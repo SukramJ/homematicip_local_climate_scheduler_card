@@ -40,7 +40,7 @@ const TIME_LABELS = (() => {
   return labels;
 })();
 
-@customElement("homematic-schedule-card")
+@customElement("homematicip-local-climate-scheduler-card")
 export class HomematicScheduleCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config?: HomematicScheduleCardConfig;
@@ -2750,7 +2750,7 @@ export class HomematicScheduleCard extends LitElement {
 // Declare the custom element for Home Assistant
 declare global {
   interface HTMLElementTagNameMap {
-    "homematic-schedule-card": HomematicScheduleCard;
+    "homematicip-local-climate-scheduler-card": HomematicScheduleCard;
   }
   interface Window {
     customCards?: Array<{
@@ -2765,14 +2765,14 @@ declare global {
 // Register the card with Home Assistant
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "homematic-schedule-card",
-  name: "Homematic Schedule Card",
+  type: "homematicip-local-climate-scheduler-card",
+  name: "Homematic(IP) Local Climate Scheduler Card",
   description: "Display and edit Homematic thermostat schedules",
   preview: true,
 });
 
 console.info(
-  "%c HOMEMATIC-SCHEDULE-CARD %c v0.2.0 ",
+  "%c HOMEMATICIP-LOCAL-CLIMATE-SCHEDULER-CARD %c v0.2.0 ",
   "color: white; background: #3498db; font-weight: 700;",
   "color: #3498db; background: white; font-weight: 700;",
 );

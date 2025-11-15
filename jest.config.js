@@ -8,7 +8,7 @@ module.exports = {
     "!src/**/*.d.ts",
     "!src/**/*.test.ts",
     "!src/**/__tests__/**",
-    "!src/homematic-schedule-card.ts", // Exclude Lit component from coverage
+    "!src/homematicip-local-climate-scheduler-card.ts", // Exclude Lit component from coverage
   ],
   coverageThreshold: {
     global: {

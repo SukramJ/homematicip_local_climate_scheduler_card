@@ -206,7 +206,7 @@ A block is active when:
 1. Configure the card with multiple entities:
 
    ```yaml
-   type: custom:homematic-schedule-card
+   type: custom:homematicip-local-climate-scheduler-card
    entities:
      - climate.living_room
      - climate.bedroom
