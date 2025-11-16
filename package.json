@@ -1,6 +1,6 @@
 {
   "name": "homematicip-local-climate-scheduler-card",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Custom Lovelace card for Homematic thermostat schedules - HACS compatible",
   "main": "dist/homematicip-local-climate-scheduler-card.js",
   "scripts": {
