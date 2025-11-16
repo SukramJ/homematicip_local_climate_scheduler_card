@@ -114,7 +114,7 @@ describe("Utils", () => {
   });
 
   describe("timeBlocksToWeekdayData", () => {
-    it("should convert time blocks to weekday data format", () => {
+    it("should convert time blocks to weekday data format (no fill-up)", () => {
       const blocks = [
         {
           startTime: "00:00",
@@ -144,12 +144,10 @@ describe("Utils", () => {
 
       const weekdayData = timeBlocksToWeekdayData(blocks);
 
-      expect(Object.keys(weekdayData)).toHaveLength(13);
+      expect(Object.keys(weekdayData)).toHaveLength(3);
       expect(weekdayData["1"]).toEqual({ ENDTIME: "06:00", TEMPERATURE: 18 });
       expect(weekdayData["2"]).toEqual({ ENDTIME: "22:00", TEMPERATURE: 21 });
       expect(weekdayData["3"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 18 });
-      expect(weekdayData["4"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 16 });
-      expect(weekdayData["13"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 16 });
     });
 
     it("should sort blocks by endMinutes in ascending order", () => {
@@ -189,7 +187,7 @@ describe("Utils", () => {
       expect(weekdayData["3"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 18 });
     });
 
-    it("should renumber slot numbers sequentially after sorting", () => {
+    it("should renumber slot numbers sequentially after sorting (no fill-up)", () => {
       // Blocks with wrong slot numbers and in wrong order
       const blocks = [
         {
@@ -238,12 +236,11 @@ describe("Utils", () => {
       expect(weekdayData["3"]).toEqual({ ENDTIME: "18:00", TEMPERATURE: 22 });
       expect(weekdayData["4"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 19 });
 
-      // Remaining slots should be filled with 24:00
-      expect(weekdayData["5"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 16 });
-      expect(weekdayData["13"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 16 });
+      // No extra slots should be added
+      expect(Object.keys(weekdayData).length).toBe(4);
     });
 
-    it("should fix the exact scenario from user report", () => {
+    it("should fix the exact scenario from user report (no fill-up, last=24:00)", () => {
       // Real-world scenario: 18:00 comes after 19:00 in slot order
       const blocks = [
         {
@@ -305,10 +302,10 @@ describe("Utils", () => {
       expect(weekdayData["4"]).toEqual({ ENDTIME: "15:00", TEMPERATURE: 15 });
       expect(weekdayData["5"]).toEqual({ ENDTIME: "18:00", TEMPERATURE: 14 }); // Fixed!
       expect(weekdayData["6"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 12 }); // 19:00 -> 24:00
-      expect(weekdayData["7"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 16 });
+      expect(Object.keys(weekdayData).length).toBe(6);
     });
 
-    it("should ensure last block ends at 24:00", () => {
+    it("should force last block to end at 24:00", () => {
       const blocks = [
         {
           startTime: "00:00",
@@ -330,7 +327,7 @@ describe("Utils", () => {
 
       const weekdayData = timeBlocksToWeekdayData(blocks);
 
-      // Last block should be corrected to end at 24:00
+      // Last block should be corrected to 24:00
       expect(weekdayData["2"]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 21 });
     });
   });
@@ -341,16 +338,6 @@ describe("Utils", () => {
         "1": { ENDTIME: "06:00", TEMPERATURE: 18 },
         "2": { ENDTIME: "22:00", TEMPERATURE: 21 },
         "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
-        "4": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "5": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "6": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "7": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "8": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "9": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "10": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "11": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "12": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "13": { ENDTIME: "24:00", TEMPERATURE: 16 },
       };
 
       const backendData = convertToBackendFormat(weekdayData);
@@ -359,14 +346,9 @@ describe("Utils", () => {
       // but they should be numeric strings that represent integers)
       expect(backendData[1]).toEqual({ ENDTIME: "06:00", TEMPERATURE: 18 });
       expect(backendData[2]).toEqual({ ENDTIME: "22:00", TEMPERATURE: 21 });
-      expect(backendData[13]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 16 });
-
-      // Verify all 13 slots are present
-      for (let i = 1; i <= 13; i++) {
-        expect(backendData[i]).toBeDefined();
-        expect(backendData[i].ENDTIME).toBeDefined();
-        expect(backendData[i].TEMPERATURE).toBeDefined();
-      }
+      expect(backendData[3]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 18 });
+      // Only existing slots should be present
+      expect(Object.keys(backendData).length).toBe(3);
     });
 
     it("should maintain sequential slot numbers in backend format", () => {
@@ -402,18 +384,12 @@ describe("Utils", () => {
       const weekdayData = timeBlocksToWeekdayData(unsortedBlocks);
       const backendData = convertToBackendFormat(weekdayData);
 
-      // Backend should have slots 1-13 with ascending times
+      // Backend should have slots 1..N with ascending times only for provided blocks
       // After sorting: slot 1 (06:00), slot 2 (12:00), slot 3 (24:00)
       expect(backendData[1]).toEqual({ ENDTIME: "06:00", TEMPERATURE: 17 }); // Earliest
       expect(backendData[2]).toEqual({ ENDTIME: "12:00", TEMPERATURE: 20 }); // Middle
       expect(backendData[3]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 22 }); // Last active
-      expect(backendData[4]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 16 }); // Filled
-      expect(backendData[13]).toEqual({ ENDTIME: "24:00", TEMPERATURE: 16 }); // Filled
-
-      // Verify all 13 slots exist and are in correct order
-      for (let i = 1; i <= 13; i++) {
-        expect(backendData[i]).toBeDefined();
-      }
+      expect(Object.keys(backendData).length).toBe(3);
     });
 
     it("should preserve ENDTIME and TEMPERATURE values", () => {
@@ -421,16 +397,6 @@ describe("Utils", () => {
         "1": { ENDTIME: "09:30", TEMPERATURE: 22.5 },
         "2": { ENDTIME: "17:45", TEMPERATURE: 19.0 },
         "3": { ENDTIME: "24:00", TEMPERATURE: 16.5 },
-        "4": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "5": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "6": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "7": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "8": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "9": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "10": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "11": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "12": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "13": { ENDTIME: "24:00", TEMPERATURE: 16 },
       };
 
       const backendData = convertToBackendFormat(weekdayData);
@@ -448,32 +414,32 @@ describe("Utils", () => {
         "1": { ENDTIME: "06:00", TEMPERATURE: 18 },
         "2": { ENDTIME: "22:00", TEMPERATURE: 21 },
         "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
-        "4": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "5": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "6": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "7": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "8": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "9": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "10": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "11": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "12": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "13": { ENDTIME: "24:00", TEMPERATURE: 16 },
       };
 
       expect(validateWeekdayData(weekdayData)).toBeNull();
     });
 
-    it("should reject invalid number of slots", () => {
-      const weekdayData: WeekdayData = {
+    it("should accept incomplete data without normalization", () => {
+      const incompleteData: WeekdayData = {
+        "1": { ENDTIME: "06:00", TEMPERATURE: 18 },
+        "2": { ENDTIME: "22:00", TEMPERATURE: 21 },
+        "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
+      };
+
+      // Should pass validation without needing normalization
+      expect(validateWeekdayData(incompleteData)).toBeNull();
+    });
+
+    it("should accept single slot data", () => {
+      const singleSlot: WeekdayData = {
         "1": { ENDTIME: "24:00", TEMPERATURE: 18 },
       };
 
-      const error = validateWeekdayData(weekdayData);
-      expect(error?.key).toBe("invalidSlotCount");
-      expect(error?.params).toEqual({ count: "1" });
+      // Should pass validation
+      expect(validateWeekdayData(singleSlot)).toBeNull();
     });
 
-    it("should reject incorrect number of slots (detected via count)", () => {
+    it("should accept data with missing middle slots (no fill-up)", () => {
       const weekdayData: WeekdayData = {
         "1": { ENDTIME: "24:00", TEMPERATURE: 18 },
         "2": { ENDTIME: "24:00", TEMPERATURE: 18 },
@@ -490,12 +456,11 @@ describe("Utils", () => {
         "13": { ENDTIME: "24:00", TEMPERATURE: 18 },
       };
 
-      const error = validateWeekdayData(weekdayData);
-      expect(error?.key).toBe("invalidSlotCount");
-      expect(error?.params).toEqual({ count: "12" });
+      // Should pass validation; frontend does not fill missing slots
+      expect(validateWeekdayData(weekdayData)).toBeNull();
     });
 
-    it("should reject slot with null/undefined value", () => {
+    it("should ignore null slots without failing", () => {
       const weekdayData = {
         "1": { ENDTIME: "06:00", TEMPERATURE: 18 },
         "2": { ENDTIME: "22:00", TEMPERATURE: 18 },
@@ -512,9 +477,9 @@ describe("Utils", () => {
         "13": { ENDTIME: "24:00", TEMPERATURE: 18 },
       } as unknown as WeekdayData;
 
+      // Validation should ignore the null slot
       const error = validateWeekdayData(weekdayData);
-      expect(error?.key).toBe("missingSlot");
-      expect(error?.params).toEqual({ slot: "8" });
+      expect(error).toBeNull();
     });
 
     it("should reject backwards time", () => {
@@ -539,21 +504,11 @@ describe("Utils", () => {
       expect(error?.params).toEqual({ slot: "2", time: "08:00" });
     });
 
-    it("should reject last slot not ending at 24:00", () => {
+    it("should reject when last slot does not end at 24:00", () => {
       const weekdayData: WeekdayData = {
         "1": { ENDTIME: "06:00", TEMPERATURE: 18 },
         "2": { ENDTIME: "22:00", TEMPERATURE: 21 },
         "3": { ENDTIME: "23:00", TEMPERATURE: 18 },
-        "4": { ENDTIME: "23:00", TEMPERATURE: 16 },
-        "5": { ENDTIME: "23:00", TEMPERATURE: 16 },
-        "6": { ENDTIME: "23:00", TEMPERATURE: 16 },
-        "7": { ENDTIME: "23:00", TEMPERATURE: 16 },
-        "8": { ENDTIME: "23:00", TEMPERATURE: 16 },
-        "9": { ENDTIME: "23:00", TEMPERATURE: 16 },
-        "10": { ENDTIME: "23:00", TEMPERATURE: 16 },
-        "11": { ENDTIME: "23:00", TEMPERATURE: 16 },
-        "12": { ENDTIME: "23:00", TEMPERATURE: 16 },
-        "13": { ENDTIME: "23:00", TEMPERATURE: 16 }, // Should be 24:00
       };
 
       const error = validateWeekdayData(weekdayData);
@@ -565,16 +520,6 @@ describe("Utils", () => {
         "1": { ENDTIME: "06:00", TEMPERATURE: 18 },
         "2": { ENDTIME: "", TEMPERATURE: 21 }, // Missing ENDTIME
         "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
-        "4": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "5": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "6": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "7": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "8": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "9": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "10": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "11": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "12": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "13": { ENDTIME: "24:00", TEMPERATURE: 16 },
       };
 
       const error = validateWeekdayData(weekdayData);
@@ -587,16 +532,6 @@ describe("Utils", () => {
         "1": { ENDTIME: "06:00", TEMPERATURE: 18 },
         "2": { ENDTIME: "25:00", TEMPERATURE: 21 }, // Exceeds 24:00
         "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
-        "4": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "5": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "6": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "7": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "8": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "9": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "10": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "11": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "12": { ENDTIME: "24:00", TEMPERATURE: 16 },
-        "13": { ENDTIME: "24:00", TEMPERATURE: 16 },
       };
 
       const error = validateWeekdayData(weekdayData);
@@ -604,7 +539,7 @@ describe("Utils", () => {
       expect(error?.params).toEqual({ slot: "2", time: "25:00" });
     });
 
-    it("should reject non-numeric slot keys", () => {
+    it("should ignore non-numeric slot keys", () => {
       const weekdayData = {
         "1": { ENDTIME: "06:00", TEMPERATURE: 18 },
         "2": { ENDTIME: "22:00", TEMPERATURE: 18 },
@@ -613,7 +548,7 @@ describe("Utils", () => {
         "5": { ENDTIME: "24:00", TEMPERATURE: 18 },
         "6": { ENDTIME: "24:00", TEMPERATURE: 18 },
         "7": { ENDTIME: "24:00", TEMPERATURE: 18 },
-        abc: { ENDTIME: "24:00", TEMPERATURE: 18 }, // Non-numeric key
+        abc: { ENDTIME: "24:00", TEMPERATURE: 18 }, // Non-numeric key (ignored)
         "9": { ENDTIME: "24:00", TEMPERATURE: 18 },
         "10": { ENDTIME: "24:00", TEMPERATURE: 18 },
         "11": { ENDTIME: "24:00", TEMPERATURE: 18 },
@@ -621,9 +556,9 @@ describe("Utils", () => {
         "13": { ENDTIME: "24:00", TEMPERATURE: 18 },
       } as unknown as WeekdayData;
 
+      // Validation should ignore non-numeric keys
       const error = validateWeekdayData(weekdayData);
-      expect(error?.key).toBe("invalidSlotKey");
-      expect(error?.params).toEqual({ key: "abc" });
+      expect(error).toBeNull();
     });
   });
 

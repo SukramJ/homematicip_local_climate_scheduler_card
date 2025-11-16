@@ -68,6 +68,10 @@ export function parseWeekdaySchedule(weekdayData: WeekdayData): TimeBlock[] {
     .sort((a, b) => a.slot - b.slot);
 
   for (const { slot, data } of sortedSlots) {
+    // Skip null/undefined or malformed slots gracefully
+    if (!data || typeof data.ENDTIME !== "string" || data.TEMPERATURE === undefined) {
+      continue;
+    }
     const endTime = data.ENDTIME;
     const endMinutes = timeToMinutes(endTime);
 
@@ -111,11 +115,12 @@ export function timeBlocksToWeekdayData(blocks: TimeBlock[]): WeekdayData {
     slot: index + 1,
   }));
 
-  // Ensure the last block ends at 24:00
+  // Ensure the last provided block ends at 24:00
   if (renumberedBlocks.length > 0) {
-    const lastBlock = renumberedBlocks[renumberedBlocks.length - 1];
+    const lastIndex = renumberedBlocks.length - 1;
+    const lastBlock = renumberedBlocks[lastIndex];
     if (lastBlock.endMinutes !== 1440) {
-      renumberedBlocks[renumberedBlocks.length - 1] = {
+      renumberedBlocks[lastIndex] = {
         ...lastBlock,
         endTime: "24:00",
         endMinutes: 1440,
@@ -123,25 +128,19 @@ export function timeBlocksToWeekdayData(blocks: TimeBlock[]): WeekdayData {
     }
   }
 
-  // Fill in all 13 slots
-  for (let i = 1; i <= 13; i++) {
-    const block = renumberedBlocks[i - 1];
-    if (block) {
-      weekdayData[i.toString()] = {
-        ENDTIME: block.endTime,
-        TEMPERATURE: block.temperature,
-      };
-    } else {
-      // Fill unused slots with 24:00
-      weekdayData[i.toString()] = {
-        ENDTIME: "24:00",
-        TEMPERATURE: 16.0,
-      };
-    }
+  // Only include existing blocks; do not fill up to 13
+  for (let i = 0; i < renumberedBlocks.length; i++) {
+    const block = renumberedBlocks[i];
+    weekdayData[(i + 1).toString()] = {
+      ENDTIME: block.endTime,
+      TEMPERATURE: block.temperature,
+    };
   }
 
   return weekdayData;
 }
+
+// Frontend no longer normalizes or fills missing slots; backend is responsible.
 
 /**
  * Convert WeekdayData to backend format with integer keys
@@ -150,10 +149,15 @@ export function timeBlocksToWeekdayData(blocks: TimeBlock[]): WeekdayData {
 export function convertToBackendFormat(weekdayData: WeekdayData): BackendWeekdayData {
   const backendData: BackendWeekdayData = {};
 
-  for (let i = 1; i <= 13; i++) {
+  // Only include existing numeric keys in ascending order
+  const keys = Object.keys(weekdayData)
+    .map((k) => parseInt(k))
+    .filter((n) => !isNaN(n) && n >= 1 && n <= 13)
+    .sort((a, b) => a - b);
+
+  for (const i of keys) {
     const slot = weekdayData[i.toString()];
     if (slot) {
-      // Convert string key to integer key for backend
       backendData[i] = {
         ENDTIME: slot.ENDTIME,
         TEMPERATURE: slot.TEMPERATURE,
@@ -226,30 +230,22 @@ export function validateTimeBlocks(
 
 /**
  * Validate schedule data
+ * Now accepts incomplete data and normalizes it before validation
  */
 export function validateWeekdayData(weekdayData: WeekdayData): ValidationMessage | null {
-  const slots = Object.keys(weekdayData);
-
-  // Must have exactly 13 slots
-  if (slots.length !== 13) {
-    return { key: "invalidSlotCount", params: { count: `${slots.length}` } };
-  }
-
-  // Validate that all keys are numeric strings
-  for (const key of slots) {
-    const num = parseInt(key, 10);
-    if (isNaN(num) || num < 1 || num > 13 || key !== num.toString()) {
-      return { key: "invalidSlotKey", params: { key } };
-    }
-  }
+  // Accept fewer than 13 slots; validate only ordering and bounds of existing slots
+  const keys = Object.keys(weekdayData)
+    .map((k) => parseInt(k))
+    .filter((n) => !isNaN(n) && n >= 1 && n <= 13)
+    .sort((a, b) => a - b);
 
   let previousEndMinutes = 0;
 
-  for (let i = 1; i <= 13; i++) {
+  for (const i of keys) {
     const slot = weekdayData[i.toString()];
-
     if (!slot) {
-      return { key: "missingSlot", params: { slot: `${i}` } };
+      // Skip null/undefined slots; backend will handle filling
+      continue;
     }
 
     if (!slot.ENDTIME || slot.TEMPERATURE === undefined) {
@@ -269,9 +265,13 @@ export function validateWeekdayData(weekdayData: WeekdayData): ValidationMessage
     previousEndMinutes = endMinutes;
   }
 
-  // Last slot must be 24:00
-  if (weekdayData["13"].ENDTIME !== "24:00") {
-    return { key: "lastSlotMustEnd" };
+  // If any slots exist, the last slot must end at 24:00
+  if (keys.length > 0) {
+    const lastKey = keys[keys.length - 1].toString();
+    const last = weekdayData[lastKey];
+    if (last && last.ENDTIME !== "24:00") {
+      return { key: "lastSlotMustEnd" };
+    }
   }
 
   return null;

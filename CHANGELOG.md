@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2025-11-16
+
+### Changed
+
+- Card file renamed from `homematic-schedule-card.ts` to `homematicip-local-climate-scheduler-card.ts`
+- Frontend no longer fills weekday schedule slots to 13; backend is responsible for missing slots
+- Validation accepts fewer than 13 slots and ensures the last slot (if any) ends at `24:00`
+- Parsing of weekday data is resilient to null/undefined or malformed slot entries
+- Conversion to backend format includes only existing numeric keys (no fill-up)
+- Card parses schedules directly without any frontend normalization
+
+### Fixed
+
+- Card correctly handles backend responses with incomplete schedule data (no frontend fill-up)
+
 ## [0.3.1] - 2025-11-14
 
 ### Fixed
