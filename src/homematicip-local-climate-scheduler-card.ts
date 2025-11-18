@@ -2959,7 +2959,7 @@ window.customCards.push({
 });
 
 console.info(
-  "%c HOMEMATICIP-LOCAL-CLIMATE-SCHEDULER-CARD %c v0.2.0 ",
+  "%c HOMEMATICIP-LOCAL-CLIMATE-SCHEDULER-CARD %c v0.4.0 ",
   "color: white; background: #3498db; font-weight: 700;",
   "color: #3498db; background: white; font-weight: 700;",
 );
