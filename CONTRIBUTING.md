@@ -114,7 +114,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 ```
 .
 ├── src/
-│   ├── homematicip-local-climate-scheduler-card.ts  # Main card component
+│   ├── homematicip-local-climate-schedule-card.ts  # Main card component
 │   ├── types.ts                                     # Type definitions
 │   ├── utils.ts                                     # Utility functions
 │   ├── *.test.ts                                    # Test files
@@ -141,7 +141,7 @@ To test your changes locally in Home Assistant:
 2. Copy the built file to your Home Assistant:
 
    ```bash
-   cp dist/homematicip-local-climate-scheduler-card.js \
+   cp dist/homematicip-local-climate-schedule-card.js \
       /path/to/homeassistant/config/www/
    ```
 

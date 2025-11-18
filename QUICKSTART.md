@@ -27,7 +27,7 @@ npm install
 npm run build
 ```
 
-The generated file will be located at: `dist/homematicip-local-climate-scheduler-card.js`
+The generated file will be located at: `dist/homematicip-local-climate-schedule-card.js`
 
 ### Development Mode (with Auto-Rebuild)
 
@@ -71,20 +71,20 @@ npm run lint:fix
 2. **Copy file**:
 
    ```bash
-   cp dist/homematicip-local-climate-scheduler-card.js \
+   cp dist/homematicip-local-climate-schedule-card.js \
       /path/to/homeassistant/config/www/
    ```
 
 3. **Add resource in Home Assistant**:
    - Settings → Dashboards → Resources
    - Click "Add Resource"
-   - URL: `/local/homematicip-local-climate-scheduler-card.js`
+   - URL: `/local/homematicip-local-climate-schedule-card.js`
    - Resource type: JavaScript Module
 
 4. **Add card to dashboard**:
 
    ```yaml
-   type: custom:homematicip-local-climate-scheduler-card
+   type: custom:homematicip-local-climate-schedule-card
    entities:
      - climate.living_room
      - climate.bedroom
@@ -146,13 +146,13 @@ git commit -m "Fix: Bugfix description"
 
 ```
 src/
-├── homematicip-local-climate-scheduler-card.ts  # Main component
+├── homematicip-local-climate-schedule-card.ts  # Main component
 ├── types.ts                                     # Type definitions
 ├── utils.ts                                     # Utility functions
 └── *.test.ts                                    # Unit tests
 
 dist/                           # Build output
-└── homematicip-local-climate-scheduler-card.js
+└── homematicip-local-climate-schedule-card.js
 
 .github/workflows/              # CI/CD
 ├── ci.yml                      # Tests & Build

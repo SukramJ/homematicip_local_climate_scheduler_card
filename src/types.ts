@@ -64,7 +64,7 @@ export interface SimpleProfileData {
 export interface ScheduleEntityAttributes {
   active_profile: string;
   available_profiles: string[];
-  simple_schedule?: SimpleProfileData;
+  simple_schedule_data?: SimpleProfileData;
   schedule_data?: ProfileData; // Keep for backward compatibility
   friendly_name?: string;
   min_temp?: number;

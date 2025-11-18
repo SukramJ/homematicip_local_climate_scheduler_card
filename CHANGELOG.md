@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
-- Card now uses `simple_schedule` attribute instead of `schedule_data` (backward compatible - falls back to `schedule_data` if `simple_schedule` is not available)
+- Card renamed from `homematicip-local-climate-scheduler-card` to `homematicip-local-climate-schedule-card` (removed 'r' from scheduler)
+- Card now uses `simple_schedule_data` attribute instead of `schedule_data` (backward compatible - falls back to `schedule_data` if `simple_schedule_data` is not available)
 - Service call changed from `set_schedule_profile_weekday` to `set_schedule_simple_weekday`
 - New data model uses base temperature + time periods instead of 13-slot format
 
@@ -17,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Base temperature UI in editor for setting temperature of unscheduled periods
 - Base temperature input field with visual temperature indicator (color-coded)
-- Support for new `simple_schedule` data model from HomematicIP Local integration
+- Support for new `simple_schedule_data` data model from HomematicIP Local integration
 - `SimpleSchedulePeriod`, `SimpleWeekdayData`, and `SimpleProfileData` type definitions
 - Utility functions for parsing and converting simple schedule format:
   - `parseSimpleWeekdaySchedule()` - converts simple schedule to TimeBlocks
@@ -33,7 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Card reads `simple_schedule` attribute with automatic fallback to `schedule_data` for backward compatibility
+- Card custom element name changed from `custom:homematicip-local-climate-scheduler-card` to `custom:homematicip-local-climate-schedule-card`
+- Card file renamed from `homematicip-local-climate-scheduler-card.js` to `homematicip-local-climate-schedule-card.js`
+- Card display name changed from "Homematic(IP) Local Climate Scheduler Card" to "Homematic(IP) Local Climate Schedule Card"
+- Card reads `simple_schedule_data` attribute with automatic fallback to `schedule_data` for backward compatibility
 - Service calls use `set_schedule_simple_weekday` with simple weekday data tuple `[base_temperature, periods[]]`
 - Copy/paste operations now include base temperature
 - Export format updated to version 2.0 for simple schedules, includes format field

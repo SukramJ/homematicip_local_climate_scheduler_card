@@ -46,7 +46,7 @@ const TIME_LABELS = (() => {
   return labels;
 })();
 
-@customElement("homematicip-local-climate-scheduler-card")
+@customElement("homematicip-local-climate-schedule-card")
 export class HomematicScheduleCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config?: HomematicScheduleCardConfig;
@@ -492,8 +492,8 @@ export class HomematicScheduleCard extends LitElement {
     const attrs = entityState.attributes as ScheduleEntityAttributes;
 
     this._currentProfile = this._config.profile || attrs.active_profile;
-    // Use simple_schedule if available, fall back to schedule_data for backward compatibility
-    this._simpleScheduleData = attrs.simple_schedule;
+    // Use simple_schedule_data if available, fall back to schedule_data for backward compatibility
+    this._simpleScheduleData = attrs.simple_schedule_data;
     this._scheduleData = attrs.schedule_data;
     this._availableProfiles = (attrs.available_profiles || [])
       .slice()
@@ -514,7 +514,7 @@ export class HomematicScheduleCard extends LitElement {
       return this._pendingChanges.get(weekday)!;
     }
 
-    // Prefer simple_schedule over schedule_data
+    // Prefer simple_schedule_data over schedule_data
     if (this._simpleScheduleData) {
       const simpleWeekdayData = this._simpleScheduleData[weekday];
       if (!simpleWeekdayData) return [];
@@ -2937,7 +2937,7 @@ export class HomematicScheduleCard extends LitElement {
 // Declare the custom element for Home Assistant
 declare global {
   interface HTMLElementTagNameMap {
-    "homematicip-local-climate-scheduler-card": HomematicScheduleCard;
+    "homematicip-local-climate-schedule-card": HomematicScheduleCard;
   }
   interface Window {
     customCards?: Array<{
@@ -2952,14 +2952,14 @@ declare global {
 // Register the card with Home Assistant
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "homematicip-local-climate-scheduler-card",
-  name: "Homematic(IP) Local Climate Scheduler Card",
+  type: "homematicip-local-climate-schedule-card",
+  name: "Homematic(IP) Local Climate Schedule Card",
   description: "Display and edit Homematic thermostat schedules",
   preview: true,
 });
 
 console.info(
-  "%c HOMEMATICIP-LOCAL-CLIMATE-SCHEDULER-CARD %c v0.4.0 ",
+  "%c HOMEMATICIP-LOCAL-CLIMATE-SCHEDULE-CARD %c v0.4.0 ",
   "color: white; background: #3498db; font-weight: 700;",
   "color: #3498db; background: white; font-weight: 700;",
 );
