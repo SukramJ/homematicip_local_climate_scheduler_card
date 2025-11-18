@@ -30,12 +30,12 @@ A custom Lovelace card for Home Assistant to display and edit Homematic thermost
 
 ### Manual Installation
 
-1. Download the `homematicip-local-climate-scheduler-card.js` file from the latest release
+1. Download the `homematicip-local-climate-schedule-card.js` file from the latest release
 2. Copy it to your `config/www` folder
 3. Add the resource to your Lovelace dashboard:
    - Go to Settings → Dashboards → Resources
    - Click "Add Resource"
-   - URL: `/local/homematicip-local-climate-scheduler-card.js`
+   - URL: `/local/homematicip-local-climate-schedule-card.js`
    - Resource type: JavaScript Module
 
 ## Configuration
@@ -43,7 +43,7 @@ A custom Lovelace card for Home Assistant to display and edit Homematic thermost
 ### Basic Configuration
 
 ```yaml
-type: custom:homematicip-local-climate-scheduler-card
+type: custom:homematicip-local-climate-schedule-card
 entity: climate.your_thermostat
 ```
 
@@ -52,7 +52,7 @@ entity: climate.your_thermostat
 Define `entities` instead of `entity` to switch between multiple thermostats via the header dropdown:
 
 ```yaml
-type: custom:homematicip-local-climate-scheduler-card
+type: custom:homematicip-local-climate-schedule-card
 entities:
   - climate.living_room
   - climate.bedroom
@@ -64,7 +64,7 @@ When only one entity is provided, the dropdown is hidden and the card shows the 
 ### Full Configuration
 
 ```yaml
-type: custom:homematicip-local-climate-scheduler-card
+type: custom:homematicip-local-climate-schedule-card
 entity: climate.living_room_thermostat
 name: Living Room Schedule
 show_profile_selector: true
@@ -189,7 +189,7 @@ git commit --no-verify -m "emergency commit"
 
 1. Clear your browser cache (Ctrl+F5)
 2. Check that the resource is properly added to Lovelace
-3. Verify the file is accessible at `/local/homematicip-local-climate-scheduler-card.js`
+3. Verify the file is accessible at `/local/homematicip-local-climate-schedule-card.js`
 
 ### Entity not found
 

@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-11-18
+
+### Breaking Changes
+
+- Card renamed from `homematicip-local-climate-scheduler-card` to `homematicip-local-climate-schedule-card` (removed 'r' from scheduler)
+- Card now uses `simple_schedule_data` attribute instead of `schedule_data` (backward compatible - falls back to `schedule_data` if `simple_schedule_data` is not available)
+- Service call changed from `set_schedule_profile_weekday` to `set_schedule_simple_weekday`
+- New data model uses base temperature + time periods instead of 13-slot format
+
+### Added
+
+- Base temperature UI in editor for setting temperature of unscheduled periods
+- Base temperature input field with visual temperature indicator (color-coded)
+- Support for new `simple_schedule_data` data model from HomematicIP Local integration
+- `SimpleSchedulePeriod`, `SimpleWeekdayData`, and `SimpleProfileData` type definitions
+- Utility functions for parsing and converting simple schedule format:
+  - `parseSimpleWeekdaySchedule()` - converts simple schedule to TimeBlocks
+  - `timeBlocksToSimpleWeekdayData()` - converts TimeBlocks to simple schedule
+  - `calculateBaseTemperature()` - intelligently determines base temperature from blocks
+  - `validateSimpleWeekdayData()` - validates simple schedule data
+  - `validateSimpleProfileData()` - validates complete simple profile
+- Dual-format import/export support:
+  - Auto-detects format when importing (simple vs legacy)
+  - Exports in format matching current schedule data
+  - Export files include format metadata (version 2.0 for simple, 1.0 for legacy)
+- "Temperature Periods" label in editor to distinguish periods from base temperature
+
+### Changed
+
+- Card custom element name changed from `custom:homematicip-local-climate-scheduler-card` to `custom:homematicip-local-climate-schedule-card`
+- Card file renamed from `homematicip-local-climate-scheduler-card.js` to `homematicip-local-climate-schedule-card.js`
+- Card display name changed from "Homematic(IP) Local Climate Scheduler Card" to "Homematic(IP) Local Climate Schedule Card"
+- Card reads `simple_schedule_data` attribute with automatic fallback to `schedule_data` for backward compatibility
+- Service calls use `set_schedule_simple_weekday` with simple weekday data tuple `[base_temperature, periods[]]`
+- Copy/paste operations now include base temperature
+- Export format updated to version 2.0 for simple schedules, includes format field
+- Editor layout reorganized with base temperature section at top, periods list below
+
+### Technical
+
+- Simple schedule format uses base temperature plus list of time periods (STARTTIME, ENDTIME, TEMPERATURE)
+- More efficient than 13-slot format - only stores explicit temperature deviations
+- Base temperature automatically calculated from most common temperature in schedule
+- All existing tests (88 tests) still pass
+- Maintained full backward compatibility with legacy `schedule_data` format
+
 ## [0.3.2] - 2025-11-16
 
 ### Changed
@@ -254,7 +300,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Jest for testing
 - GitHub Actions for CI/CD
 
-[Unreleased]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.2.1...HEAD
+[Unreleased]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.3.2...0.4.0
+[0.3.2]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.3.1...0.3.2
+[0.3.1]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.3.0...0.3.1
+[0.3.0]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/releases/tag/0.1.0

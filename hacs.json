@@ -1,6 +1,6 @@
 {
-  "name": "HomematicIP Local Climate Scheduler Card",
+  "name": "HomematicIP Local Climate Schedule Card",
   "render_readme": true,
-  "filename": "homematicip-local-climate-scheduler-card.js",
+  "filename": "homematicip-local-climate-schedule-card.js",
   "content_in_root": true
 }

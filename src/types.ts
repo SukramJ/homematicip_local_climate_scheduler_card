@@ -39,10 +39,33 @@ export interface ProfileData {
   [weekday: string]: WeekdayData;
 }
 
+/**
+ * Simple schedule period with start time, end time, and temperature
+ */
+export interface SimpleSchedulePeriod {
+  STARTTIME: string;
+  ENDTIME: string;
+  TEMPERATURE: number;
+}
+
+/**
+ * Simple weekday data: [base_temperature, periods[]]
+ * This is the new simplified format from aiohomematic
+ */
+export type SimpleWeekdayData = [number, SimpleSchedulePeriod[]];
+
+/**
+ * Simple profile data mapping weekdays to simple weekday data
+ */
+export interface SimpleProfileData {
+  [weekday: string]: SimpleWeekdayData;
+}
+
 export interface ScheduleEntityAttributes {
   active_profile: string;
   available_profiles: string[];
-  schedule_data: ProfileData;
+  simple_schedule_data?: SimpleProfileData;
+  schedule_data?: ProfileData; // Keep for backward compatibility
   friendly_name?: string;
   min_temp?: number;
   max_temp?: number;

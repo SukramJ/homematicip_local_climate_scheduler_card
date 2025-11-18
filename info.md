@@ -23,13 +23,13 @@ A custom Lovelace card for Home Assistant to display and edit Homematic thermost
 
 ## Manual Installation
 
-1. Download the `homematicip-local-climate-scheduler-card.js` file
+1. Download the `homematicip-local-climate-schedule-card.js` file
 2. Copy it to your `config/www` folder
 3. Add the following to your Lovelace resources:
 
 ```yaml
 resources:
-  - url: /local/homematicip-local-climate-scheduler-card.js
+  - url: /local/homematicip-local-climate-schedule-card.js
     type: module
 ```
 
@@ -38,7 +38,7 @@ resources:
 Add the card to your dashboard:
 
 ```yaml
-type: custom:homematicip-local-climate-scheduler-card
+type: custom:homematicip-local-climate-schedule-card
 entity: climate.your_thermostat
 name: Living Room Schedule
 show_profile_selector: true

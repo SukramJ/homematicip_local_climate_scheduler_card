@@ -4,4 +4,4 @@ coverage/
 *.log
 package-lock.json
 .nyc_output/
-homematicip-local-climate-scheduler-card.js
+homematicip-local-climate-schedule-card.js

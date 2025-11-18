@@ -9,6 +9,7 @@ import {
   ProfileData,
   Weekday,
   WeekdayData,
+  SimpleProfileData,
 } from "./types";
 import {
   parseWeekdaySchedule,
@@ -17,6 +18,11 @@ import {
   validateWeekdayData,
   validateTimeBlocks,
   validateProfileData,
+  parseSimpleWeekdaySchedule,
+  timeBlocksToSimpleWeekdayData,
+  calculateBaseTemperature,
+  validateSimpleWeekdayData,
+  validateSimpleProfileData,
   ValidationMessage,
   getTemperatureColor,
   getTemperatureGradient,
@@ -40,17 +46,23 @@ const TIME_LABELS = (() => {
   return labels;
 })();
 
-@customElement("homematicip-local-climate-scheduler-card")
+@customElement("homematicip-local-climate-schedule-card")
 export class HomematicScheduleCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config?: HomematicScheduleCardConfig;
   @state() private _currentProfile?: string;
   @state() private _scheduleData?: ProfileData;
+  @state() private _simpleScheduleData?: SimpleProfileData;
   @state() private _availableProfiles: string[] = [];
   @state() private _activeEntityId?: string;
   @state() private _editingWeekday?: Weekday;
   @state() private _editingBlocks?: TimeBlock[];
-  @state() private _copiedSchedule?: { weekday: Weekday; blocks: TimeBlock[] };
+  @state() private _editingBaseTemperature?: number;
+  @state() private _copiedSchedule?: {
+    weekday: Weekday;
+    blocks: TimeBlock[];
+    baseTemperature?: number;
+  };
   @state() private _isLoading: boolean = false;
   private _loadingTimeoutId?: number;
   @state() private _currentTimePercent: number = 0;
@@ -461,6 +473,7 @@ export class HomematicScheduleCard extends LitElement {
     if (!entityId) {
       this._currentProfile = undefined;
       this._scheduleData = undefined;
+      this._simpleScheduleData = undefined;
       this._availableProfiles = [];
       this._pendingChanges.clear();
       return;
@@ -470,6 +483,7 @@ export class HomematicScheduleCard extends LitElement {
     if (!entityState) {
       this._currentProfile = undefined;
       this._scheduleData = undefined;
+      this._simpleScheduleData = undefined;
       this._availableProfiles = [];
       this._pendingChanges.clear();
       return;
@@ -478,6 +492,8 @@ export class HomematicScheduleCard extends LitElement {
     const attrs = entityState.attributes as ScheduleEntityAttributes;
 
     this._currentProfile = this._config.profile || attrs.active_profile;
+    // Use simple_schedule_data if available, fall back to schedule_data for backward compatibility
+    this._simpleScheduleData = attrs.simple_schedule_data;
     this._scheduleData = attrs.schedule_data;
     this._availableProfiles = (attrs.available_profiles || [])
       .slice()
@@ -498,19 +514,39 @@ export class HomematicScheduleCard extends LitElement {
       return this._pendingChanges.get(weekday)!;
     }
 
-    if (!this._scheduleData) return [];
+    // Prefer simple_schedule_data over schedule_data
+    if (this._simpleScheduleData) {
+      const simpleWeekdayData = this._simpleScheduleData[weekday];
+      if (!simpleWeekdayData) return [];
 
-    const weekdayData = this._scheduleData[weekday];
-    if (!weekdayData) return [];
+      const cachedBlocks = this._parsedScheduleCache.get(
+        simpleWeekdayData as unknown as WeekdayData,
+      );
+      if (cachedBlocks) {
+        return cachedBlocks;
+      }
 
-    const cachedBlocks = this._parsedScheduleCache.get(weekdayData);
-    if (cachedBlocks) {
-      return cachedBlocks;
+      const { blocks } = parseSimpleWeekdaySchedule(simpleWeekdayData);
+      this._parsedScheduleCache.set(simpleWeekdayData as unknown as WeekdayData, blocks);
+      return blocks;
     }
 
-    const blocks = parseWeekdaySchedule(weekdayData);
-    this._parsedScheduleCache.set(weekdayData, blocks);
-    return blocks;
+    // Fallback to old schedule_data for backward compatibility
+    if (this._scheduleData) {
+      const weekdayData = this._scheduleData[weekday];
+      if (!weekdayData) return [];
+
+      const cachedBlocks = this._parsedScheduleCache.get(weekdayData);
+      if (cachedBlocks) {
+        return cachedBlocks;
+      }
+
+      const blocks = parseWeekdaySchedule(weekdayData);
+      this._parsedScheduleCache.set(weekdayData, blocks);
+      return blocks;
+    }
+
+    return [];
   }
 
   private async _handleProfileChange(e: Event): Promise<void> {
@@ -546,16 +582,28 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   private _handleWeekdayClick(weekday: Weekday): void {
-    if (!this._config?.editable || !this._scheduleData) return;
+    if (!this._config?.editable) return;
+    if (!this._simpleScheduleData && !this._scheduleData) return;
 
     // Don't open editor when in drag & drop mode
     if (this._isDragDropMode) return;
 
-    const weekdayData = this._scheduleData[weekday];
-    if (!weekdayData) return;
-
     this._editingWeekday = weekday;
     this._editingBlocks = this._getParsedBlocks(weekday);
+
+    // Extract base temperature if using simple schedule
+    if (this._simpleScheduleData) {
+      const simpleWeekdayData = this._simpleScheduleData[weekday];
+      if (simpleWeekdayData) {
+        const { baseTemperature } = parseSimpleWeekdaySchedule(simpleWeekdayData);
+        this._editingBaseTemperature = baseTemperature;
+      } else {
+        this._editingBaseTemperature = 20.0; // Default
+      }
+    } else {
+      // Calculate base temperature from blocks for old format
+      this._editingBaseTemperature = calculateBaseTemperature(this._editingBlocks);
+    }
 
     // Initialize history stack with the initial state
     this._historyStack = [JSON.parse(JSON.stringify(this._editingBlocks)) as TimeBlock[]];
@@ -568,6 +616,7 @@ export class HomematicScheduleCard extends LitElement {
   private _closeEditor(): void {
     this._editingWeekday = undefined;
     this._editingBlocks = undefined;
+    this._editingBaseTemperature = undefined;
     // Clear history stack
     this._historyStack = [];
     this._historyIndex = -1;
@@ -814,7 +863,8 @@ export class HomematicScheduleCard extends LitElement {
       !this.hass ||
       !this._editingWeekday ||
       !this._editingBlocks ||
-      !this._currentProfile
+      !this._currentProfile ||
+      this._editingBaseTemperature === undefined
     ) {
       return;
     }
@@ -824,19 +874,23 @@ export class HomematicScheduleCard extends LitElement {
       return;
     }
 
-    // Convert blocks to weekday data (automatically sorts by time)
-    const weekdayData = timeBlocksToWeekdayData(this._editingBlocks);
+    // Convert blocks to simple weekday data format
+    const simpleWeekdayData = timeBlocksToSimpleWeekdayData(
+      this._editingBlocks,
+      this._editingBaseTemperature,
+    );
 
     // Validate schedule data before sending
-    const validationError = validateWeekdayData(weekdayData);
+    const validationError = validateSimpleWeekdayData(
+      simpleWeekdayData,
+      this._minTemp,
+      this._maxTemp,
+    );
     if (validationError) {
       const localizedError = this._translateValidationMessage(validationError);
       alert(formatString(this._translations.errors.invalidSchedule, { error: localizedError }));
       return;
     }
-
-    // Convert to backend format with integer keys for aiohomematic
-    const backendData = convertToBackendFormat(weekdayData);
 
     // Set loading state with 10-second timeout
     this._isLoading = true;
@@ -846,18 +900,19 @@ export class HomematicScheduleCard extends LitElement {
     }, 10000);
 
     try {
-      await this.hass.callService("homematicip_local", "set_schedule_profile_weekday", {
+      // Call the new simple schedule service
+      await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
         entity_id: entityId,
         profile: this._currentProfile,
         weekday: this._editingWeekday,
-        weekday_data: backendData,
+        simple_weekday_data: simpleWeekdayData,
       });
 
-      // Update local state (keep as WeekdayData format internally)
-      if (this._scheduleData) {
-        this._scheduleData = {
-          ...this._scheduleData,
-          [this._editingWeekday]: weekdayData,
+      // Update local state
+      if (this._simpleScheduleData) {
+        this._simpleScheduleData = {
+          ...this._simpleScheduleData,
+          [this._editingWeekday]: simpleWeekdayData,
         };
       }
 
@@ -880,15 +935,25 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   private _copySchedule(weekday: Weekday): void {
-    if (!this._scheduleData) return;
-
-    const weekdayData = this._scheduleData[weekday];
-    if (!weekdayData) return;
+    if (!this._simpleScheduleData && !this._scheduleData) return;
 
     const blocks = this._getParsedBlocks(weekday);
+
+    // Get base temperature if using simple schedule
+    let baseTemperature: number | undefined;
+    if (this._simpleScheduleData) {
+      const simpleWeekdayData = this._simpleScheduleData[weekday];
+      if (simpleWeekdayData) {
+        baseTemperature = parseSimpleWeekdaySchedule(simpleWeekdayData).baseTemperature;
+      }
+    } else {
+      baseTemperature = calculateBaseTemperature(blocks);
+    }
+
     this._copiedSchedule = {
       weekday,
       blocks: JSON.parse(JSON.stringify(blocks)), // Deep copy
+      baseTemperature,
     };
 
     // Show feedback
@@ -896,13 +961,7 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   private async _pasteSchedule(weekday: Weekday): Promise<void> {
-    if (
-      !this._config ||
-      !this.hass ||
-      !this._currentProfile ||
-      !this._copiedSchedule ||
-      !this._scheduleData
-    ) {
+    if (!this._config || !this.hass || !this._currentProfile || !this._copiedSchedule) {
       return;
     }
 
@@ -911,19 +970,27 @@ export class HomematicScheduleCard extends LitElement {
       return;
     }
 
-    // Convert copied blocks to weekday data
-    const weekdayData = timeBlocksToWeekdayData(this._copiedSchedule.blocks);
+    // Get base temperature from copied schedule or calculate it
+    const baseTemperature =
+      this._copiedSchedule.baseTemperature ?? calculateBaseTemperature(this._copiedSchedule.blocks);
+
+    // Convert copied blocks to simple weekday data
+    const simpleWeekdayData = timeBlocksToSimpleWeekdayData(
+      this._copiedSchedule.blocks,
+      baseTemperature,
+    );
 
     // Validate schedule data
-    const validationError = validateWeekdayData(weekdayData);
+    const validationError = validateSimpleWeekdayData(
+      simpleWeekdayData,
+      this._minTemp,
+      this._maxTemp,
+    );
     if (validationError) {
       const localizedError = this._translateValidationMessage(validationError);
       alert(formatString(this._translations.errors.invalidSchedule, { error: localizedError }));
       return;
     }
-
-    // Convert to backend format
-    const backendData = convertToBackendFormat(weekdayData);
 
     // Set loading state with 10-second timeout
     this._isLoading = true;
@@ -933,18 +1000,21 @@ export class HomematicScheduleCard extends LitElement {
     }, 10000);
 
     try {
-      await this.hass.callService("homematicip_local", "set_schedule_profile_weekday", {
+      // Call the new simple schedule service
+      await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
         entity_id: entityId,
         profile: this._currentProfile,
         weekday: weekday,
-        weekday_data: backendData,
+        simple_weekday_data: simpleWeekdayData,
       });
 
       // Update local state
-      this._scheduleData = {
-        ...this._scheduleData,
-        [weekday]: weekdayData,
-      };
+      if (this._simpleScheduleData) {
+        this._simpleScheduleData = {
+          ...this._simpleScheduleData,
+          [weekday]: simpleWeekdayData,
+        };
+      }
 
       // Force update from entity to get latest backend data
       this._updateFromEntity();
@@ -965,17 +1035,24 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   private _exportSchedule(): void {
-    if (!this._scheduleData || !this._currentProfile) {
+    if (!this._currentProfile) {
+      return;
+    }
+
+    // Prefer simple schedule data if available
+    const scheduleToExport = this._simpleScheduleData || this._scheduleData;
+    if (!scheduleToExport) {
       return;
     }
 
     try {
       // Create export data with metadata
       const exportData = {
-        version: "1.0",
+        version: this._simpleScheduleData ? "2.0" : "1.0",
         profile: this._currentProfile,
         exported: new Date().toISOString(),
-        scheduleData: this._scheduleData,
+        scheduleData: scheduleToExport,
+        format: this._simpleScheduleData ? "simple" : "legacy",
       };
 
       // Convert to JSON string with formatting
@@ -1040,15 +1117,31 @@ export class HomematicScheduleCard extends LitElement {
 
         // Extract schedule data (support both with and without metadata wrapper)
         let scheduleData: unknown;
+        let isSimpleFormat = false;
         if ("scheduleData" in data) {
           scheduleData = data.scheduleData;
+          const format = "format" in data ? data.format : undefined;
+          const version = "version" in data ? data.version : undefined;
+          isSimpleFormat = format === "simple" || version === "2.0";
         } else {
           // Assume the entire file is schedule data
           scheduleData = importData;
+          // Try to detect format by checking first weekday structure
+          const firstWeekday =
+            scheduleData && typeof scheduleData === "object" && "MONDAY" in scheduleData
+              ? (scheduleData as Record<string, unknown>).MONDAY
+              : null;
+          isSimpleFormat = Array.isArray(firstWeekday);
         }
 
-        // Validate schedule data
-        const validationError = validateProfileData(scheduleData);
+        // Validate schedule data based on format
+        let validationError: ValidationMessage | null;
+        if (isSimpleFormat) {
+          validationError = validateSimpleProfileData(scheduleData);
+        } else {
+          validationError = validateProfileData(scheduleData);
+        }
+
         if (validationError) {
           const localizedError = this._translateValidationMessage(validationError);
           alert(
@@ -1071,23 +1164,43 @@ export class HomematicScheduleCard extends LitElement {
         }, 10000);
 
         try {
-          // Import each weekday
-          const importedSchedule = scheduleData as ProfileData;
-          for (const weekday of WEEKDAYS) {
-            const weekdayData = importedSchedule[weekday];
-            if (weekdayData) {
-              const backendData = convertToBackendFormat(weekdayData);
-              await this.hass.callService("homematicip_local", "set_schedule_profile_weekday", {
-                entity_id: entityId,
-                profile: this._currentProfile,
-                weekday: weekday,
-                weekday_data: backendData,
-              });
+          if (isSimpleFormat) {
+            // Import simple format
+            const importedSchedule = scheduleData as SimpleProfileData;
+            for (const weekday of WEEKDAYS) {
+              const simpleWeekdayData = importedSchedule[weekday];
+              if (simpleWeekdayData) {
+                await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
+                  entity_id: entityId,
+                  profile: this._currentProfile,
+                  weekday: weekday,
+                  simple_weekday_data: simpleWeekdayData,
+                });
+              }
             }
+
+            // Update local state
+            this._simpleScheduleData = importedSchedule;
+          } else {
+            // Import legacy format (backward compatibility)
+            const importedSchedule = scheduleData as ProfileData;
+            for (const weekday of WEEKDAYS) {
+              const weekdayData = importedSchedule[weekday];
+              if (weekdayData) {
+                const backendData = convertToBackendFormat(weekdayData);
+                await this.hass.callService("homematicip_local", "set_schedule_profile_weekday", {
+                  entity_id: entityId,
+                  profile: this._currentProfile,
+                  weekday: weekday,
+                  weekday_data: backendData,
+                });
+              }
+            }
+
+            // Update local state
+            this._scheduleData = importedSchedule;
           }
 
-          // Update local state
-          this._scheduleData = importedSchedule;
           this._updateFromEntity();
           this.requestUpdate();
 
@@ -1306,7 +1419,8 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   private _renderScheduleView() {
-    if (!this._scheduleData) return html``;
+    // Check if we have schedule data (either simple or legacy format)
+    if (!this._simpleScheduleData && !this._scheduleData) return html``;
 
     return html`
       <div
@@ -1334,10 +1448,9 @@ export class HomematicScheduleCard extends LitElement {
             WEEKDAYS,
             (weekday) => weekday,
             (weekday) => {
-              const weekdayData = this._scheduleData![weekday];
-              if (!weekdayData) return html``;
-
+              // Try to get blocks from either simple or legacy schedule
               const blocks = this._getParsedBlocks(weekday);
+              if (!blocks || blocks.length === 0) return html``;
 
               const isCopiedSource = this._copiedSchedule?.weekday === weekday;
 
@@ -1607,6 +1720,34 @@ export class HomematicScheduleCard extends LitElement {
             `
           : ""}
 
+        <!-- Base Temperature Section -->
+        <div class="base-temperature-section">
+          <div class="base-temperature-header">
+            <span class="base-temp-label">Base Temperature</span>
+            <span class="base-temp-description">Temperature for unscheduled periods</span>
+          </div>
+          <div class="base-temperature-input">
+            <input
+              type="number"
+              class="temp-input base-temp-input"
+              .value=${this._editingBaseTemperature?.toString() || "20.0"}
+              step=${this._tempStep}
+              min=${this._minTemp}
+              max=${this._maxTemp}
+              @change=${(e: Event) => {
+                this._editingBaseTemperature = parseFloat((e.target as HTMLInputElement).value);
+                this.requestUpdate();
+              }}
+            />
+            <span class="temp-unit">${this._config?.temperature_unit || "°C"}</span>
+            <div
+              class="color-indicator"
+              style="background-color: ${getTemperatureColor(this._editingBaseTemperature || 20.0)}"
+            ></div>
+          </div>
+        </div>
+
+        <div class="editor-content-label">Temperature Periods</div>
         <div class="editor-content">
           ${this._editingBlocks.map((block, index) => {
             // Calculate min/max time constraints
@@ -2313,6 +2454,52 @@ export class HomematicScheduleCard extends LitElement {
         margin: 4px 0;
       }
 
+      /* Base Temperature Section */
+      .base-temperature-section {
+        background-color: rgba(var(--rgb-primary-color, 3, 169, 244), 0.1);
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        padding: 12px;
+        margin: 12px 0;
+      }
+
+      .base-temperature-header {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 8px;
+      }
+
+      .base-temp-label {
+        font-weight: 500;
+        font-size: 14px;
+        color: var(--primary-text-color);
+      }
+
+      .base-temp-description {
+        font-size: 12px;
+        color: var(--secondary-text-color);
+      }
+
+      .base-temperature-input {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .base-temp-input {
+        width: 80px;
+        font-weight: 500;
+      }
+
+      .editor-content-label {
+        font-weight: 500;
+        font-size: 14px;
+        color: var(--primary-text-color);
+        margin: 16px 0 8px 0;
+        padding-left: 8px;
+      }
+
       .editor-content {
         max-height: 500px;
         overflow-y: auto;
@@ -2750,7 +2937,7 @@ export class HomematicScheduleCard extends LitElement {
 // Declare the custom element for Home Assistant
 declare global {
   interface HTMLElementTagNameMap {
-    "homematicip-local-climate-scheduler-card": HomematicScheduleCard;
+    "homematicip-local-climate-schedule-card": HomematicScheduleCard;
   }
   interface Window {
     customCards?: Array<{
@@ -2765,14 +2952,14 @@ declare global {
 // Register the card with Home Assistant
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "homematicip-local-climate-scheduler-card",
-  name: "Homematic(IP) Local Climate Scheduler Card",
+  type: "homematicip-local-climate-schedule-card",
+  name: "Homematic(IP) Local Climate Schedule Card",
   description: "Display and edit Homematic thermostat schedules",
   preview: true,
 });
 
 console.info(
-  "%c HOMEMATICIP-LOCAL-CLIMATE-SCHEDULER-CARD %c v0.2.0 ",
+  "%c HOMEMATICIP-LOCAL-CLIMATE-SCHEDULE-CARD %c v0.4.0 ",
   "color: white; background: #3498db; font-weight: 700;",
   "color: #3498db; background: white; font-weight: 700;",
 );

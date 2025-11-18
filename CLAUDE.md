@@ -20,7 +20,7 @@ A custom Lovelace card that displays and allows editing of weekly thermostat sch
 ```
 homematicip_local_climate_scheduler_card/
 ├── src/                                    # Source code
-│   ├── homematicip-local-climate-scheduler-card.ts  # Main card component
+│   ├── homematicip-local-climate-schedule-card.ts  # Main card component
 │   ├── types.ts                            # TypeScript type definitions
 │   ├── utils.ts                            # Utility functions
 │   ├── localization.ts                     # i18n/translation support
@@ -48,7 +48,7 @@ homematicip_local_climate_scheduler_card/
 
 ## Key Components
 
-### Main Card Component (`src/homematicip-local-climate-scheduler-card.ts`)
+### Main Card Component (`src/homematicip-local-climate-schedule-card.ts`)
 
 The primary Lit custom element that:
 
@@ -168,14 +168,14 @@ Climate entities should expose:
 ### Minimal Configuration
 
 ```yaml
-type: custom:homematicip-local-climate-scheduler-card
+type: custom:homematicip-local-climate-schedule-card
 entity: climate.living_room
 ```
 
 ### Multi-Entity Configuration
 
 ```yaml
-type: custom:homematicip-local-climate-scheduler-card
+type: custom:homematicip-local-climate-schedule-card
 entities:
   - climate.living_room
   - climate.bedroom
@@ -201,7 +201,7 @@ entities:
 
 ### Adding a New Feature
 
-1. Implement in `src/homematicip-local-climate-scheduler-card.ts`
+1. Implement in `src/homematicip-local-climate-schedule-card.ts`
 2. Add types to `src/types.ts` if needed
 3. Create tests in corresponding `.test.ts` file
 4. Update `README.md` if user-facing
@@ -270,11 +270,11 @@ The build pipeline:
 1. **TypeScript compilation**: `.ts` → `.js` with type checking
 2. **Module resolution**: Bundles dependencies
 3. **Terser minification**: Optimizes for production
-4. **Output**: Single `dist/homematicip-local-climate-scheduler-card.js`
+4. **Output**: Single `dist/homematicip-local-climate-schedule-card.js`
 
 ### Build Outputs
 
-- `dist/homematicip-local-climate-scheduler-card.js`: Production bundle
+- `dist/homematicip-local-climate-schedule-card.js`: Production bundle
 - `dist/*.d.ts`: TypeScript declarations (if enabled)
 - `dist/*.map`: Source maps
 
