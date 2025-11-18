@@ -8,7 +8,9 @@ describe("localization", () => {
       expect(translations.weekdays.long.monday).toBe("Monday");
       expect(translations.ui.schedule).toBe("Schedule");
       expect(translations.errors.failedToChangeProfile).toBe("Failed to change profile: {error}");
-      expect(translations.validationMessages.noBlocks).toBe("At least one time block is required");
+      expect(translations.validationMessages.blockEndBeforeStart).toBe(
+        "Block {block}: End time is before start time",
+      );
     });
 
     it("should return German translations for 'de' language code", () => {
@@ -21,8 +23,8 @@ describe("localization", () => {
       expect(translations.errors.failedToChangeProfile).toBe(
         "Fehler beim Wechseln des Profils: {error}",
       );
-      expect(translations.validationMessages.noBlocks).toBe(
-        "Mindestens ein Zeitblock ist erforderlich",
+      expect(translations.validationMessages.blockEndBeforeStart).toBe(
+        "Block {block}: Die Endzeit liegt vor der Startzeit",
       );
     });
 
@@ -133,7 +135,6 @@ describe("localization", () => {
 
       // Check validation messages
       expect(translations.validationMessages).toBeDefined();
-      expect(translations.validationMessages.noBlocks).toBeDefined();
       expect(translations.validationMessages.blockEndBeforeStart).toBeDefined();
       expect(translations.validationMessages.blockZeroDuration).toBeDefined();
       expect(translations.validationMessages.invalidStartTime).toBeDefined();
@@ -187,9 +188,6 @@ describe("localization", () => {
       expect(translations.warnings.title).toBe("Validierungswarnungen");
 
       // Check validation messages
-      expect(translations.validationMessages.noBlocks).toBe(
-        "Mindestens ein Zeitblock ist erforderlich",
-      );
       expect(translations.validationMessages.temperatureOutOfRange).toBe(
         "Block {block}: Temperatur außerhalb des Bereichs ({min}-{max}°C)",
       );
@@ -292,7 +290,7 @@ describe("localization", () => {
       expect(typeof translations.ui.schedule).toBe("string");
       expect(typeof translations.errors.failedToChangeProfile).toBe("string");
       expect(typeof translations.warnings.title).toBe("string");
-      expect(typeof translations.validationMessages.noBlocks).toBe("string");
+      expect(typeof translations.validationMessages.blockEndBeforeStart).toBe("string");
     });
 
     it("should have correct structure for German translations", () => {
@@ -303,7 +301,7 @@ describe("localization", () => {
       expect(typeof translations.ui.schedule).toBe("string");
       expect(typeof translations.errors.failedToChangeProfile).toBe("string");
       expect(typeof translations.warnings.title).toBe("string");
-      expect(typeof translations.validationMessages.noBlocks).toBe("string");
+      expect(typeof translations.validationMessages.blockEndBeforeStart).toBe("string");
     });
   });
 });

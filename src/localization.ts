@@ -134,7 +134,6 @@ const en: Translations = {
     noWarnings: "No issues detected",
   },
   validationMessages: {
-    noBlocks: "At least one time block is required",
     blockEndBeforeStart: "Block {block}: End time is before start time",
     blockZeroDuration: "Block {block}: Block has zero duration",
     invalidStartTime: "Block {block}: Invalid start time",
@@ -221,7 +220,6 @@ const de: Translations = {
     noWarnings: "Keine Probleme erkannt",
   },
   validationMessages: {
-    noBlocks: "Mindestens ein Zeitblock ist erforderlich",
     blockEndBeforeStart: "Block {block}: Die Endzeit liegt vor der Startzeit",
     blockZeroDuration: "Block {block}: Der Block hat keine Dauer",
     invalidStartTime: "Block {block}: Ungültige Startzeit",

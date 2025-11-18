@@ -828,11 +828,11 @@ describe("Utils", () => {
       expect(tempWarnings).toHaveLength(2);
     });
 
-    it("should warn when blocks array is empty", () => {
+    it("should allow empty blocks array (base temperature is sufficient)", () => {
       const blocks: TimeBlock[] = [];
 
       const warnings = validateTimeBlocks(blocks);
-      expect(findMessage(warnings, "noBlocks")).toBeDefined();
+      expect(warnings.length).toBe(0);
     });
 
     it("should warn when time values are invalid", () => {

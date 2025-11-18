@@ -10,7 +10,6 @@ import {
 export type { ScheduleSlot, BackendWeekdayData, SimpleWeekdayData, SimpleSchedulePeriod };
 
 export type ValidationMessageKey =
-  | "noBlocks"
   | "blockEndBeforeStart"
   | "blockZeroDuration"
   | "invalidStartTime"
@@ -188,8 +187,8 @@ export function validateTimeBlocks(
 ): ValidationMessage[] {
   const warnings: ValidationMessage[] = [];
 
+  // Allow empty blocks - base temperature is sufficient
   if (blocks.length === 0) {
-    warnings.push({ key: "noBlocks" });
     return warnings;
   }
 
