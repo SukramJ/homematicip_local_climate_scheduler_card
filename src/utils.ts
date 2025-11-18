@@ -1,7 +1,13 @@
-import { WeekdayData, ScheduleSlot, BackendWeekdayData } from "./types";
+import {
+  WeekdayData,
+  ScheduleSlot,
+  BackendWeekdayData,
+  SimpleWeekdayData,
+  SimpleSchedulePeriod,
+} from "./types";
 
 // Re-export types for use in this module
-export type { ScheduleSlot, BackendWeekdayData };
+export type { ScheduleSlot, BackendWeekdayData, SimpleWeekdayData, SimpleSchedulePeriod };
 
 export type ValidationMessageKey =
   | "noBlocks"
@@ -373,6 +379,197 @@ export function validateProfileData(data: unknown): ValidationMessage | null {
 
     // Validate weekday data structure
     const error = validateWeekdayData(weekdayData as WeekdayData);
+    if (error) {
+      return { key: "weekdayValidationError", params: { weekday }, nested: error };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse simple weekday schedule data into time blocks
+ * SimpleWeekdayData is a tuple: [base_temperature, periods[]]
+ */
+export function parseSimpleWeekdaySchedule(simpleData: SimpleWeekdayData): {
+  blocks: TimeBlock[];
+  baseTemperature: number;
+} {
+  const [baseTemperature, periods] = simpleData;
+  const blocks: TimeBlock[] = [];
+
+  // Sort periods by start time
+  const sortedPeriods = [...periods].sort((a, b) => {
+    const aStart = timeToMinutes(a.STARTTIME);
+    const bStart = timeToMinutes(b.STARTTIME);
+    return aStart - bStart;
+  });
+
+  // Convert periods to time blocks
+  for (let i = 0; i < sortedPeriods.length; i++) {
+    const period = sortedPeriods[i];
+    blocks.push({
+      startTime: period.STARTTIME,
+      startMinutes: timeToMinutes(period.STARTTIME),
+      endTime: period.ENDTIME,
+      endMinutes: timeToMinutes(period.ENDTIME),
+      temperature: period.TEMPERATURE,
+      slot: i + 1,
+    });
+  }
+
+  return { blocks, baseTemperature };
+}
+
+/**
+ * Convert time blocks to simple weekday data format
+ * Returns tuple: [base_temperature, periods[]]
+ */
+export function timeBlocksToSimpleWeekdayData(
+  blocks: TimeBlock[],
+  baseTemperature: number,
+): SimpleWeekdayData {
+  const periods: SimpleSchedulePeriod[] = [];
+
+  // Sort blocks by time
+  const sortedBlocks = [...blocks].sort((a, b) => a.startMinutes - b.startMinutes);
+
+  // Convert blocks to periods (only periods that differ from base temperature)
+  for (const block of sortedBlocks) {
+    periods.push({
+      STARTTIME: block.startTime,
+      ENDTIME: block.endTime,
+      TEMPERATURE: block.temperature,
+    });
+  }
+
+  return [baseTemperature, periods];
+}
+
+/**
+ * Calculate base temperature from time blocks
+ * The base temperature is the temperature that covers the most time in a day
+ */
+export function calculateBaseTemperature(blocks: TimeBlock[]): number {
+  if (blocks.length === 0) {
+    return 20.0; // Default base temperature
+  }
+
+  // Calculate total minutes for each temperature
+  const tempMinutes = new Map<number, number>();
+
+  // Add time from blocks
+  for (const block of blocks) {
+    const duration = block.endMinutes - block.startMinutes;
+    const current = tempMinutes.get(block.temperature) || 0;
+    tempMinutes.set(block.temperature, current + duration);
+  }
+
+  // Calculate gaps (time not covered by blocks) and assign to first block's temperature
+  // This is a simplification; in reality, gaps would use base temperature
+  // But since we're calculating base temp, we'll just use the most common temperature
+
+  // Find temperature with most minutes
+  let maxMinutes = 0;
+  let baseTemp = 20.0;
+
+  for (const [temp, minutes] of tempMinutes.entries()) {
+    if (minutes > maxMinutes) {
+      maxMinutes = minutes;
+      baseTemp = temp;
+    }
+  }
+
+  return baseTemp;
+}
+
+/**
+ * Validate simple weekday data
+ */
+export function validateSimpleWeekdayData(
+  simpleData: SimpleWeekdayData,
+  minTemp: number = 5,
+  maxTemp: number = 30.5,
+): ValidationMessage | null {
+  const [baseTemperature, periods] = simpleData;
+
+  // Validate base temperature
+  if (baseTemperature < minTemp || baseTemperature > maxTemp) {
+    return {
+      key: "temperatureOutOfRange",
+      params: { block: "base", min: `${minTemp}`, max: `${maxTemp}` },
+    };
+  }
+
+  // Validate periods
+  let previousEndMinutes = 0;
+
+  for (let i = 0; i < periods.length; i++) {
+    const period = periods[i];
+
+    if (!period.STARTTIME || !period.ENDTIME || period.TEMPERATURE === undefined) {
+      return { key: "slotMissingValues", params: { slot: `${i + 1}` } };
+    }
+
+    const startMinutes = timeToMinutes(period.STARTTIME);
+    const endMinutes = timeToMinutes(period.ENDTIME);
+
+    // Check for valid time range
+    if (endMinutes <= startMinutes) {
+      return { key: "blockEndBeforeStart", params: { block: `${i + 1}` } };
+    }
+
+    // Check for overlaps
+    if (startMinutes < previousEndMinutes) {
+      return { key: "slotTimeBackwards", params: { slot: `${i + 1}`, time: period.STARTTIME } };
+    }
+
+    // Check for valid temperature
+    if (period.TEMPERATURE < minTemp || period.TEMPERATURE > maxTemp) {
+      return {
+        key: "temperatureOutOfRange",
+        params: { block: `${i + 1}`, min: `${minTemp}`, max: `${maxTemp}` },
+      };
+    }
+
+    previousEndMinutes = endMinutes;
+  }
+
+  return null;
+}
+
+/**
+ * Validate simple profile data structure
+ */
+export function validateSimpleProfileData(data: unknown): ValidationMessage | null {
+  if (!data || typeof data !== "object") {
+    return { key: "scheduleMustBeObject" };
+  }
+
+  const profileData = data as Record<string, unknown>;
+  const validWeekdays = [
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+    "SUNDAY",
+  ];
+
+  // Check if all required weekdays are present
+  for (const weekday of validWeekdays) {
+    if (!(weekday in profileData)) {
+      return { key: "missingWeekday", params: { weekday } };
+    }
+
+    const weekdayData = profileData[weekday];
+    if (!Array.isArray(weekdayData) || weekdayData.length !== 2) {
+      return { key: "invalidWeekdayData", params: { weekday } };
+    }
+
+    // Validate simple weekday data structure
+    const error = validateSimpleWeekdayData(weekdayData as SimpleWeekdayData);
     if (error) {
       return { key: "weekdayValidationError", params: { weekday }, nested: error };
     }
