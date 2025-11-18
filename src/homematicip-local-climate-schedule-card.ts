@@ -508,6 +508,20 @@ export class HomematicScheduleCard extends LitElement {
     this._parsedScheduleCache = new WeakMap();
   }
 
+  private _getBaseTemperature(weekday: Weekday): number {
+    // Try to get base temperature from simple schedule data
+    if (this._simpleScheduleData) {
+      const simpleWeekdayData = this._simpleScheduleData[weekday];
+      if (simpleWeekdayData) {
+        const { baseTemperature } = parseSimpleWeekdaySchedule(simpleWeekdayData);
+        return baseTemperature;
+      }
+    }
+
+    // For legacy schedule data or when no data exists, return default
+    return 20.0; // Default base temperature
+  }
+
   private _getParsedBlocks(weekday: Weekday): TimeBlock[] {
     // Check for pending changes first
     if (this._pendingChanges.has(weekday)) {
@@ -1449,8 +1463,22 @@ export class HomematicScheduleCard extends LitElement {
             (weekday) => weekday,
             (weekday) => {
               // Try to get blocks from either simple or legacy schedule
-              const blocks = this._getParsedBlocks(weekday);
-              if (!blocks || blocks.length === 0) return html``;
+              let blocks = this._getParsedBlocks(weekday);
+
+              // If no blocks exist, create a full-day block with base temperature
+              if (!blocks || blocks.length === 0) {
+                const baseTemp = this._getBaseTemperature(weekday);
+                blocks = [
+                  {
+                    startTime: "00:00",
+                    startMinutes: 0,
+                    endTime: "24:00",
+                    endMinutes: 1440,
+                    temperature: baseTemp,
+                    slot: 0,
+                  },
+                ];
+              }
 
               const isCopiedSource = this._copiedSchedule?.weekday === weekday;
 
