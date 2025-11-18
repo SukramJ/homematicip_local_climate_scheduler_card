@@ -23,7 +23,7 @@ A custom Lovelace card for Home Assistant to display and edit Homematic thermost
 1. Make sure [HACS](https://hacs.xyz/) is installed
 2. In HACS, go to "Frontend"
 3. Click the three-dot menu and select "Custom repositories"
-4. Add this repository URL: `https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card`
+4. Add this repository URL: `https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card`
 5. Select category "Lovelace"
 6. Click "Install"
 7. Restart Home Assistant
@@ -231,4 +231,4 @@ If you find this card useful, please consider:
 - Reporting issues or suggesting features
 - Contributing to the code
 
-For issues and questions, please use the [GitHub Issues](https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/issues) page.
+For issues and questions, please use the [GitHub Issues](https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card/issues) page.

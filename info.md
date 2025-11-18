@@ -88,7 +88,7 @@ The card displays a week view with each day showing temperature blocks. Colors i
 
 ## Support
 
-For issues and feature requests, please visit: [GitHub Issues](https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card/issues)
+For issues and feature requests, please visit: [GitHub Issues](https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card/issues)
 
 ## License
 

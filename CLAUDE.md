@@ -18,7 +18,7 @@ A custom Lovelace card that displays and allows editing of weekly thermostat sch
 ## Project Structure
 
 ```
-homematicip_local_climate_scheduler_card/
+homematicip_local_climate_schedule_card/
 ├── src/                                    # Source code
 │   ├── homematicip-local-climate-schedule-card.ts  # Main card component
 │   ├── types.ts                            # TypeScript type definitions

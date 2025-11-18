@@ -47,8 +47,8 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 2. Clone your fork:
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card.git
-   cd homematicip_local_climate_scheduler_card
+   git clone https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card.git
+   cd homematicip_local_climate_schedule_card
    ```
 
 3. Install dependencies:

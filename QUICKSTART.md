@@ -12,8 +12,8 @@ Quick guide to get started with the project.
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/homematicip_local_climate_scheduler_card.git
-cd homematicip_local_climate_scheduler_card
+git clone https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card.git
+cd homematicip_local_climate_schedule_card
 
 # Install dependencies
 npm install
