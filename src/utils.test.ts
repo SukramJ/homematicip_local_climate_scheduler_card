@@ -7,6 +7,11 @@ import {
   validateWeekdayData,
   validateTimeBlocks,
   validateProfileData,
+  parseSimpleWeekdaySchedule,
+  timeBlocksToSimpleWeekdayData,
+  calculateBaseTemperature,
+  validateSimpleWeekdayData,
+  validateSimpleProfileData,
   getTemperatureColor,
   getTemperatureGradient,
   roundTimeToQuarter,
@@ -15,7 +20,7 @@ import {
   ValidationMessage,
   ValidationMessageKey,
 } from "./utils";
-import { WeekdayData } from "./types";
+import { WeekdayData, SimpleWeekdayData, SimpleProfileData } from "./types";
 
 const findMessage = (
   messages: ValidationMessage[],
@@ -1348,6 +1353,375 @@ describe("Utils", () => {
       expect(error?.key).toBe("weekdayValidationError");
       expect(error?.params).toEqual({ weekday: "MONDAY" });
       expect(error?.nested?.key).toBe("slotTimeBackwards");
+    });
+  });
+
+  describe("parseSimpleWeekdaySchedule", () => {
+    it("should parse simple weekday schedule into time blocks", () => {
+      const simpleData: SimpleWeekdayData = [
+        20.0,
+        [
+          { STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 },
+          { STARTTIME: "18:00", ENDTIME: "22:00", TEMPERATURE: 21.5 },
+        ],
+      ];
+
+      const { blocks, baseTemperature } = parseSimpleWeekdaySchedule(simpleData);
+
+      expect(baseTemperature).toBe(20.0);
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0]).toEqual({
+        startTime: "06:00",
+        startMinutes: 360,
+        endTime: "08:00",
+        endMinutes: 480,
+        temperature: 22.0,
+        slot: 1,
+      });
+      expect(blocks[1]).toEqual({
+        startTime: "18:00",
+        startMinutes: 1080,
+        endTime: "22:00",
+        endMinutes: 1320,
+        temperature: 21.5,
+        slot: 2,
+      });
+    });
+
+    it("should handle empty periods array", () => {
+      const simpleData: SimpleWeekdayData = [19.5, []];
+
+      const { blocks, baseTemperature } = parseSimpleWeekdaySchedule(simpleData);
+
+      expect(baseTemperature).toBe(19.5);
+      expect(blocks).toHaveLength(0);
+    });
+
+    it("should sort periods by start time", () => {
+      const simpleData: SimpleWeekdayData = [
+        20.0,
+        [
+          { STARTTIME: "18:00", ENDTIME: "22:00", TEMPERATURE: 21.5 },
+          { STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 },
+        ],
+      ];
+
+      const { blocks } = parseSimpleWeekdaySchedule(simpleData);
+
+      expect(blocks[0].startTime).toBe("06:00");
+      expect(blocks[1].startTime).toBe("18:00");
+    });
+  });
+
+  describe("timeBlocksToSimpleWeekdayData", () => {
+    it("should convert time blocks to simple weekday data", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "06:00",
+          startMinutes: 360,
+          endTime: "08:00",
+          endMinutes: 480,
+          temperature: 22.0,
+          slot: 1,
+        },
+        {
+          startTime: "18:00",
+          startMinutes: 1080,
+          endTime: "22:00",
+          endMinutes: 1320,
+          temperature: 21.5,
+          slot: 2,
+        },
+      ];
+
+      const simpleData = timeBlocksToSimpleWeekdayData(blocks, 20.0);
+
+      expect(simpleData[0]).toBe(20.0);
+      expect(simpleData[1]).toHaveLength(2);
+      expect(simpleData[1][0]).toEqual({
+        STARTTIME: "06:00",
+        ENDTIME: "08:00",
+        TEMPERATURE: 22.0,
+      });
+      expect(simpleData[1][1]).toEqual({
+        STARTTIME: "18:00",
+        ENDTIME: "22:00",
+        TEMPERATURE: 21.5,
+      });
+    });
+
+    it("should handle empty blocks array", () => {
+      const blocks: TimeBlock[] = [];
+
+      const simpleData = timeBlocksToSimpleWeekdayData(blocks, 19.5);
+
+      expect(simpleData[0]).toBe(19.5);
+      expect(simpleData[1]).toHaveLength(0);
+    });
+
+    it("should sort blocks by time before converting", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "18:00",
+          startMinutes: 1080,
+          endTime: "22:00",
+          endMinutes: 1320,
+          temperature: 21.5,
+          slot: 2,
+        },
+        {
+          startTime: "06:00",
+          startMinutes: 360,
+          endTime: "08:00",
+          endMinutes: 480,
+          temperature: 22.0,
+          slot: 1,
+        },
+      ];
+
+      const simpleData = timeBlocksToSimpleWeekdayData(blocks, 20.0);
+
+      expect(simpleData[1][0].STARTTIME).toBe("06:00");
+      expect(simpleData[1][1].STARTTIME).toBe("18:00");
+    });
+  });
+
+  describe("calculateBaseTemperature", () => {
+    it("should return default temperature for empty blocks", () => {
+      const blocks: TimeBlock[] = [];
+
+      const baseTemp = calculateBaseTemperature(blocks);
+
+      expect(baseTemp).toBe(20.0);
+    });
+
+    it("should calculate base temperature as most common temperature", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "06:00",
+          endMinutes: 360,
+          temperature: 18.0,
+          slot: 1,
+        },
+        {
+          startTime: "06:00",
+          startMinutes: 360,
+          endTime: "22:00",
+          endMinutes: 1320,
+          temperature: 21.0,
+          slot: 2,
+        },
+        {
+          startTime: "22:00",
+          startMinutes: 1320,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 18.0,
+          slot: 3,
+        },
+      ];
+
+      const baseTemp = calculateBaseTemperature(blocks);
+
+      // 21.0 covers 960 minutes (16 hours), most common
+      expect(baseTemp).toBe(21.0);
+    });
+
+    it("should handle single block", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 19.5,
+          slot: 1,
+        },
+      ];
+
+      const baseTemp = calculateBaseTemperature(blocks);
+
+      expect(baseTemp).toBe(19.5);
+    });
+  });
+
+  describe("validateSimpleWeekdayData", () => {
+    it("should validate correct simple weekday data", () => {
+      const simpleData: SimpleWeekdayData = [
+        20.0,
+        [
+          { STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 },
+          { STARTTIME: "18:00", ENDTIME: "22:00", TEMPERATURE: 21.5 },
+        ],
+      ];
+
+      const error = validateSimpleWeekdayData(simpleData);
+
+      expect(error).toBeNull();
+    });
+
+    it("should reject base temperature out of range", () => {
+      const simpleData: SimpleWeekdayData = [
+        35.0,
+        [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }],
+      ];
+
+      const error = validateSimpleWeekdayData(simpleData);
+
+      expect(error?.key).toBe("temperatureOutOfRange");
+      expect(error?.params?.block).toBe("base");
+    });
+
+    it("should reject period temperature out of range", () => {
+      const simpleData: SimpleWeekdayData = [
+        20.0,
+        [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 35.0 }],
+      ];
+
+      const error = validateSimpleWeekdayData(simpleData);
+
+      expect(error?.key).toBe("temperatureOutOfRange");
+      expect(error?.params?.block).toBe("1");
+    });
+
+    it("should reject period with end before start", () => {
+      const simpleData: SimpleWeekdayData = [
+        20.0,
+        [{ STARTTIME: "08:00", ENDTIME: "06:00", TEMPERATURE: 22.0 }],
+      ];
+
+      const error = validateSimpleWeekdayData(simpleData);
+
+      expect(error?.key).toBe("blockEndBeforeStart");
+    });
+
+    it("should reject overlapping periods", () => {
+      const simpleData: SimpleWeekdayData = [
+        20.0,
+        [
+          { STARTTIME: "06:00", ENDTIME: "10:00", TEMPERATURE: 22.0 },
+          { STARTTIME: "08:00", ENDTIME: "12:00", TEMPERATURE: 21.5 },
+        ],
+      ];
+
+      const error = validateSimpleWeekdayData(simpleData);
+
+      expect(error?.key).toBe("slotTimeBackwards");
+    });
+
+    it("should reject period with missing values", () => {
+      const simpleData: SimpleWeekdayData = [
+        20.0,
+        [{ STARTTIME: "06:00", ENDTIME: "", TEMPERATURE: 22.0 }],
+      ];
+
+      const error = validateSimpleWeekdayData(simpleData);
+
+      expect(error?.key).toBe("slotMissingValues");
+    });
+
+    it("should use custom temperature range", () => {
+      const simpleData: SimpleWeekdayData = [
+        25.0,
+        [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 28.0 }],
+      ];
+
+      const error = validateSimpleWeekdayData(simpleData, 10, 30);
+
+      expect(error).toBeNull();
+    });
+  });
+
+  describe("validateSimpleProfileData", () => {
+    it("should validate correct simple profile data", () => {
+      const profileData: SimpleProfileData = {
+        MONDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        TUESDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        WEDNESDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        THURSDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        FRIDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        SATURDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        SUNDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+      };
+
+      const error = validateSimpleProfileData(profileData);
+
+      expect(error).toBeNull();
+    });
+
+    it("should reject non-object data", () => {
+      const error = validateSimpleProfileData(null);
+
+      expect(error?.key).toBe("scheduleMustBeObject");
+    });
+
+    it("should reject missing weekday", () => {
+      const profileData = {
+        MONDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        TUESDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+      };
+
+      const error = validateSimpleProfileData(profileData);
+
+      expect(error?.key).toBe("missingWeekday");
+      expect(error?.params?.weekday).toBe("WEDNESDAY");
+    });
+
+    it("should reject invalid weekday data structure", () => {
+      const profileData = {
+        MONDAY: [20.0], // Missing periods array
+        TUESDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        WEDNESDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        THURSDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        FRIDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        SATURDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        SUNDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+      };
+
+      const error = validateSimpleProfileData(profileData);
+
+      expect(error?.key).toBe("invalidWeekdayData");
+      expect(error?.params?.weekday).toBe("MONDAY");
+    });
+
+    it("should reject non-array weekday data", () => {
+      const profileData = {
+        MONDAY: { base: 20.0 }, // Wrong structure
+        TUESDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        WEDNESDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        THURSDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        FRIDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        SATURDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        SUNDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+      };
+
+      const error = validateSimpleProfileData(profileData);
+
+      expect(error?.key).toBe("invalidWeekdayData");
+      expect(error?.params?.weekday).toBe("MONDAY");
+    });
+
+    it("should propagate weekday validation errors", () => {
+      const profileData: SimpleProfileData = {
+        MONDAY: [
+          20.0,
+          [{ STARTTIME: "08:00", ENDTIME: "06:00", TEMPERATURE: 22.0 }], // End before start
+        ],
+        TUESDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        WEDNESDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        THURSDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        FRIDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        SATURDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+        SUNDAY: [20.0, [{ STARTTIME: "06:00", ENDTIME: "08:00", TEMPERATURE: 22.0 }]],
+      };
+
+      const error = validateSimpleProfileData(profileData);
+
+      expect(error?.key).toBe("weekdayValidationError");
+      expect(error?.params?.weekday).toBe("MONDAY");
+      expect(error?.nested?.key).toBe("blockEndBeforeStart");
     });
   });
 });
