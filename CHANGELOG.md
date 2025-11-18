@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2025-11-18
+
+### Fixed
+
+- Completed renaming of card references across all documentation files
+- Updated package.json metadata to reflect correct card name
+- Fixed remaining references to old card name in CONTRIBUTING.md, QUICKSTART.md, and info.md
+
 ## [0.4.0] - 2025-11-18
 
 ### Breaking Changes
@@ -300,7 +308,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Jest for testing
 - GitHub Actions for CI/CD
 
-[Unreleased]: https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card/compare/0.3.2...0.4.0
 [0.3.2]: https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/YOUR_USERNAME/homematicip_local_climate_schedule_card/compare/0.3.0...0.3.1
