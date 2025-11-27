@@ -13,9 +13,7 @@ import {
 } from "./types";
 import {
   parseWeekdaySchedule,
-  timeBlocksToWeekdayData,
   convertToBackendFormat,
-  validateWeekdayData,
   validateTimeBlocks,
   validateProfileData,
   parseSimpleWeekdaySchedule,
@@ -754,8 +752,14 @@ export class HomematicScheduleCard extends LitElement {
 
       const constrainedMinutes = Math.max(minMinutes, Math.min(maxMinutes, newMinutes));
 
-      // Update the previous block's end time (if not first block)
-      if (blockIndex > 0) {
+      // Check if blocks are adjacent (no gap between them)
+      const blocksAreAdjacent =
+        blockIndex > 0 &&
+        this._dragState?.originalBlocks[blockIndex].startMinutes ===
+          this._dragState?.originalBlocks[blockIndex - 1].endMinutes;
+
+      // Update the previous block's end time only if blocks are adjacent
+      if (blocksAreAdjacent) {
         blocks[blockIndex - 1] = {
           ...blocks[blockIndex - 1],
           endMinutes: constrainedMinutes,
@@ -773,7 +777,8 @@ export class HomematicScheduleCard extends LitElement {
       // End time must be > this block's start time
       const minMinutes = blocks[blockIndex].startMinutes + 15;
       // End time must be <= next block's start time (or 1440 for last block)
-      const maxMinutes = blockIndex < blocks.length - 1 ? blocks[blockIndex + 1].endMinutes : 1440;
+      const maxMinutes =
+        blockIndex < blocks.length - 1 ? blocks[blockIndex + 1].startMinutes : 1440;
 
       const constrainedMinutes = Math.max(minMinutes, Math.min(maxMinutes, newMinutes));
 
@@ -784,8 +789,14 @@ export class HomematicScheduleCard extends LitElement {
         endTime: minutesToTime(constrainedMinutes),
       };
 
-      // Update next block's start time (if not last block)
-      if (blockIndex < blocks.length - 1) {
+      // Check if blocks are adjacent (no gap between them)
+      const blocksAreAdjacent =
+        blockIndex < blocks.length - 1 &&
+        this._dragState?.originalBlocks[blockIndex].endMinutes ===
+          this._dragState?.originalBlocks[blockIndex + 1].startMinutes;
+
+      // Update next block's start time only if blocks are adjacent
+      if (blocksAreAdjacent) {
         blocks[blockIndex + 1] = {
           ...blocks[blockIndex + 1],
           startMinutes: constrainedMinutes,
@@ -832,31 +843,37 @@ export class HomematicScheduleCard extends LitElement {
     }, 10000);
 
     try {
-      // Save all pending changes sequentially
+      // Save all pending changes sequentially using simple schedule format
       for (const [weekday, blocks] of this._pendingChanges) {
-        const weekdayData = timeBlocksToWeekdayData(blocks);
-        const validationError = validateWeekdayData(weekdayData);
+        // Get base temperature for this weekday
+        const baseTemperature = this._getBaseTemperature(weekday);
 
+        // Convert blocks to simple weekday data format
+        const simpleWeekdayData = timeBlocksToSimpleWeekdayData(blocks, baseTemperature);
+
+        // Validate
+        const validationError = validateSimpleWeekdayData(simpleWeekdayData);
         if (validationError) {
           const localizedError = this._translateValidationMessage(validationError);
           const weekdayLabel = this._getWeekdayLabel(weekday, "long");
           throw new Error(`${weekdayLabel}: ${localizedError}`);
         }
 
-        const backendData = convertToBackendFormat(weekdayData);
-
-        await this.hass.callService("homematicip_local", "set_schedule_profile_weekday", {
+        // Call the simple schedule service
+        const [baseTemp, periods] = simpleWeekdayData;
+        await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
           entity_id: entityId,
           profile: this._currentProfile,
           weekday: weekday,
-          weekday_data: backendData,
+          base_temperature: baseTemp,
+          simple_weekday_list: periods,
         });
 
         // Update local state
-        if (this._scheduleData) {
-          this._scheduleData = {
-            ...this._scheduleData,
-            [weekday]: weekdayData,
+        if (this._simpleScheduleData) {
+          this._simpleScheduleData = {
+            ...this._simpleScheduleData,
+            [weekday]: simpleWeekdayData,
           };
         }
       }
@@ -928,11 +945,14 @@ export class HomematicScheduleCard extends LitElement {
 
     try {
       // Call the new simple schedule service
+      // simpleWeekdayData is a tuple: [baseTemperature, periods[]]
+      const [baseTemperature, periods] = simpleWeekdayData;
       await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
         entity_id: entityId,
         profile: this._currentProfile,
         weekday: this._editingWeekday,
-        simple_weekday_data: simpleWeekdayData,
+        base_temperature: baseTemperature,
+        simple_weekday_list: periods,
       });
 
       // Update local state
@@ -1028,11 +1048,14 @@ export class HomematicScheduleCard extends LitElement {
 
     try {
       // Call the new simple schedule service
+      // simpleWeekdayData is a tuple: [baseTemperature, periods[]]
+      const [baseTemperature, periods] = simpleWeekdayData;
       await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
         entity_id: entityId,
         profile: this._currentProfile,
         weekday: weekday,
-        simple_weekday_data: simpleWeekdayData,
+        base_temperature: baseTemperature,
+        simple_weekday_list: periods,
       });
 
       // Update local state
@@ -1197,11 +1220,14 @@ export class HomematicScheduleCard extends LitElement {
             for (const weekday of WEEKDAYS) {
               const simpleWeekdayData = importedSchedule[weekday];
               if (simpleWeekdayData) {
+                // simpleWeekdayData is a tuple: [baseTemperature, periods[]]
+                const [baseTemperature, periods] = simpleWeekdayData;
                 await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
                   entity_id: entityId,
                   profile: this._currentProfile,
                   weekday: weekday,
-                  simple_weekday_data: simpleWeekdayData,
+                  base_temperature: baseTemperature,
+                  simple_weekday_list: periods,
                 });
               }
             }
@@ -1476,22 +1502,11 @@ export class HomematicScheduleCard extends LitElement {
             (weekday) => weekday,
             (weekday) => {
               // Try to get blocks from either simple or legacy schedule
-              let blocks = this._getParsedBlocks(weekday);
+              const rawBlocks = this._getParsedBlocks(weekday);
+              const baseTemp = this._getBaseTemperature(weekday);
 
-              // If no blocks exist, create a full-day block with base temperature
-              if (!blocks || blocks.length === 0) {
-                const baseTemp = this._getBaseTemperature(weekday);
-                blocks = [
-                  {
-                    startTime: "00:00",
-                    startMinutes: 0,
-                    endTime: "24:00",
-                    endMinutes: 1440,
-                    temperature: baseTemp,
-                    slot: 0,
-                  },
-                ];
-              }
+              // Fill gaps with base temperature to get complete day coverage
+              const blocks = fillGapsWithBaseTemperature(rawBlocks, baseTemp);
 
               const isCopiedSource = this._copiedSchedule?.weekday === weekday;
 
@@ -1533,13 +1548,25 @@ export class HomematicScheduleCard extends LitElement {
                   >
                     ${repeat(
                       blocks,
-                      (block) => block.slot,
+                      (block) => `${block.slot}-${block.startMinutes}`,
                       (block, blockIndex) => {
                         const isActive = this._isBlockActive(weekday, block);
 
+                        // Check if this is a base temperature block (not in raw blocks)
+                        const isBaseTempBlock =
+                          block.temperature === baseTemp &&
+                          !rawBlocks.some(
+                            (b) =>
+                              b.startMinutes === block.startMinutes &&
+                              b.endMinutes === block.endMinutes,
+                          );
+
                         // Determine background style based on gradient config
                         let backgroundStyle: string;
-                        if (this._config?.show_gradient) {
+                        if (isBaseTempBlock) {
+                          // Base temperature blocks get a light gray background
+                          backgroundStyle = `background-color: var(--secondary-background-color, #e0e0e0);`;
+                        } else if (this._config?.show_gradient) {
                           const prevTemp =
                             blockIndex > 0 ? blocks[blockIndex - 1].temperature : null;
                           const nextTemp =
@@ -1560,52 +1587,77 @@ export class HomematicScheduleCard extends LitElement {
                           <div
                             class="time-block ${isActive
                               ? "active"
-                              : ""} ${this._pendingChanges.has(weekday) ? "pending" : ""}"
+                              : ""} ${this._pendingChanges.has(weekday)
+                              ? "pending"
+                              : ""} ${isBaseTempBlock ? "base-temp-block" : ""}"
                             style="
                               height: ${((block.endMinutes - block.startMinutes) / 1440) * 100}%;
                               ${backgroundStyle}
                             "
                           >
-                            ${this._config?.editable && this._isDragDropMode && blockIndex > 0
-                              ? html`
-                                  <div
-                                    class="drag-handle drag-handle-top"
-                                    @mousedown=${(e: MouseEvent) => {
-                                      e.stopPropagation();
-                                      this._startDrag(e, weekday, blockIndex, "start");
-                                    }}
-                                    @touchstart=${(e: TouchEvent) => {
-                                      e.stopPropagation();
-                                      this._startDrag(e, weekday, blockIndex, "start");
-                                    }}
-                                  ></div>
-                                `
-                              : ""}
-                            ${this._config?.editable && this._isDragDropMode
-                              ? html`
-                                  <div
-                                    class="temperature-drag-area"
-                                    @mousedown=${(e: MouseEvent) => {
-                                      e.stopPropagation();
-                                      this._startDrag(e, weekday, blockIndex, "temperature");
-                                    }}
-                                    @touchstart=${(e: TouchEvent) => {
-                                      e.stopPropagation();
-                                      this._startDrag(e, weekday, blockIndex, "temperature");
-                                    }}
-                                  >
-                                    ${this._config?.show_temperature
-                                      ? html`<span class="temperature"
-                                          >${block.temperature.toFixed(1)}°</span
-                                        >`
-                                      : ""}
-                                  </div>
-                                `
-                              : this._config?.show_temperature
-                                ? html`<span class="temperature"
-                                    >${block.temperature.toFixed(1)}°</span
-                                  >`
-                                : ""}
+                            ${(() => {
+                              // Find actual index in rawBlocks for drag handle
+                              const rawIndex = rawBlocks.findIndex(
+                                (b) =>
+                                  b.startMinutes === block.startMinutes &&
+                                  b.endMinutes === block.endMinutes,
+                              );
+                              // Show top drag handle if block can be extended upward (not starting at midnight)
+                              const canExtendUp = rawIndex >= 0 && block.startMinutes > 0;
+                              return this._config?.editable &&
+                                this._isDragDropMode &&
+                                !isBaseTempBlock &&
+                                canExtendUp
+                                ? html`
+                                    <div
+                                      class="drag-handle drag-handle-top"
+                                      @mousedown=${(e: MouseEvent) => {
+                                        e.stopPropagation();
+                                        this._startDrag(e, weekday, rawIndex, "start");
+                                      }}
+                                      @touchstart=${(e: TouchEvent) => {
+                                        e.stopPropagation();
+                                        this._startDrag(e, weekday, rawIndex, "start");
+                                      }}
+                                    ></div>
+                                  `
+                                : "";
+                            })()}
+                            ${(() => {
+                              const rawIndex = rawBlocks.findIndex(
+                                (b) =>
+                                  b.startMinutes === block.startMinutes &&
+                                  b.endMinutes === block.endMinutes,
+                              );
+                              return this._config?.editable &&
+                                this._isDragDropMode &&
+                                !isBaseTempBlock &&
+                                rawIndex >= 0
+                                ? html`
+                                    <div
+                                      class="temperature-drag-area"
+                                      @mousedown=${(e: MouseEvent) => {
+                                        e.stopPropagation();
+                                        this._startDrag(e, weekday, rawIndex, "temperature");
+                                      }}
+                                      @touchstart=${(e: TouchEvent) => {
+                                        e.stopPropagation();
+                                        this._startDrag(e, weekday, rawIndex, "temperature");
+                                      }}
+                                    >
+                                      ${this._config?.show_temperature
+                                        ? html`<span class="temperature"
+                                            >${block.temperature.toFixed(1)}°</span
+                                          >`
+                                        : ""}
+                                    </div>
+                                  `
+                                : this._config?.show_temperature
+                                  ? html`<span class="temperature"
+                                      >${block.temperature.toFixed(1)}°</span
+                                    >`
+                                  : "";
+                            })()}
                             <div class="time-block-tooltip">
                               <div class="tooltip-time">${block.startTime} - ${block.endTime}</div>
                               <div class="tooltip-temp">
@@ -1615,23 +1667,33 @@ export class HomematicScheduleCard extends LitElement {
                                 )}
                               </div>
                             </div>
-                            ${this._config?.editable &&
-                            this._isDragDropMode &&
-                            blockIndex < blocks.length - 1
-                              ? html`
-                                  <div
-                                    class="drag-handle drag-handle-bottom"
-                                    @mousedown=${(e: MouseEvent) => {
-                                      e.stopPropagation();
-                                      this._startDrag(e, weekday, blockIndex, "end");
-                                    }}
-                                    @touchstart=${(e: TouchEvent) => {
-                                      e.stopPropagation();
-                                      this._startDrag(e, weekday, blockIndex, "end");
-                                    }}
-                                  ></div>
-                                `
-                              : ""}
+                            ${(() => {
+                              const rawIndex = rawBlocks.findIndex(
+                                (b) =>
+                                  b.startMinutes === block.startMinutes &&
+                                  b.endMinutes === block.endMinutes,
+                              );
+                              // Show bottom drag handle if block can be extended downward (not ending at midnight)
+                              const canExtendDown = rawIndex >= 0 && block.endMinutes < 1440;
+                              return this._config?.editable &&
+                                this._isDragDropMode &&
+                                !isBaseTempBlock &&
+                                canExtendDown
+                                ? html`
+                                    <div
+                                      class="drag-handle drag-handle-bottom"
+                                      @mousedown=${(e: MouseEvent) => {
+                                        e.stopPropagation();
+                                        this._startDrag(e, weekday, rawIndex, "end");
+                                      }}
+                                      @touchstart=${(e: TouchEvent) => {
+                                        e.stopPropagation();
+                                        this._startDrag(e, weekday, rawIndex, "end");
+                                      }}
+                                    ></div>
+                                  `
+                                : "";
+                            })()}
                           </div>
                         `;
                       },
@@ -1830,30 +1892,30 @@ export class HomematicScheduleCard extends LitElement {
       }
     }
 
+    // Use a different temperature than base so the block is visible
+    // Default to base + 2 degrees, clamped to valid range
+    const newTemperature = Math.min(this._editingBaseTemperature + 2, this._maxTemp);
+
     const newBlock: TimeBlock = {
       startTime: minutesToTime(newStartMinutes),
       startMinutes: newStartMinutes,
       endTime: minutesToTime(newEndMinutes),
       endMinutes: newEndMinutes,
-      temperature: this._editingBaseTemperature,
+      temperature: newTemperature,
       slot: this._editingBlocks.length + 1,
     };
 
     // Save history state
     this._saveHistoryState();
 
-    // Insert the new block
-    const newBlocks = insertBlockWithSplitting(
-      this._editingBlocks,
-      newBlock,
-      this._editingBaseTemperature,
-    );
-    const mergedBlocks = mergeConsecutiveBlocks(sortBlocksChronologically(newBlocks));
+    // Add the new block directly (don't merge, since we want it to be editable)
+    const newBlocks = [...this._editingBlocks, newBlock];
+    const sortedBlocks = sortBlocksChronologically(newBlocks);
 
-    this._editingBlocks = mergedBlocks;
+    this._editingBlocks = sortedBlocks;
 
     // Start editing the newly added slot
-    const newIndex = mergedBlocks.findIndex(
+    const newIndex = sortedBlocks.findIndex(
       (b) => b.startMinutes === newStartMinutes && b.endMinutes === newEndMinutes,
     );
     if (newIndex >= 0) {
@@ -2440,6 +2502,16 @@ export class HomematicScheduleCard extends LitElement {
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         transition: opacity 0.2s;
         cursor: pointer;
+      }
+
+      .time-block.base-temp-block {
+        color: var(--secondary-text-color, #666);
+        text-shadow: none;
+        border-top: 1px dashed var(--divider-color, #ccc);
+      }
+
+      .time-block.base-temp-block:first-child {
+        border-top: none;
       }
 
       .time-block:hover {
