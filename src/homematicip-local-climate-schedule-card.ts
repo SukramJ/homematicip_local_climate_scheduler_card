@@ -30,6 +30,10 @@ import {
   TimeBlock,
   minutesToTime,
   timeToMinutes,
+  mergeConsecutiveBlocks,
+  insertBlockWithSplitting,
+  fillGapsWithBaseTemperature,
+  sortBlocksChronologically,
 } from "./utils";
 import { getTranslations, formatString, Translations } from "./localization";
 
@@ -84,6 +88,12 @@ export class HomematicScheduleCard extends LitElement {
   @state() private _minTemp: number = 5.0;
   @state() private _maxTemp: number = 30.5;
   @state() private _tempStep: number = 0.5;
+  @state() private _editingSlotIndex?: number;
+  @state() private _editingSlotData?: {
+    startTime: string;
+    endTime: string;
+    temperature: number;
+  };
   private _dragState?: {
     weekday: Weekday;
     blockIndex: number;
@@ -631,6 +641,9 @@ export class HomematicScheduleCard extends LitElement {
     this._editingWeekday = undefined;
     this._editingBlocks = undefined;
     this._editingBaseTemperature = undefined;
+    // Clear slot editing state
+    this._editingSlotIndex = undefined;
+    this._editingSlotData = undefined;
     // Clear history stack
     this._historyStack = [];
     this._historyIndex = -1;
@@ -1697,8 +1710,167 @@ export class HomematicScheduleCard extends LitElement {
     this._updateFromEntity();
   }
 
+  private _startSlotEdit(editingIndex: number): void {
+    if (!this._editingBlocks || editingIndex < 0 || editingIndex >= this._editingBlocks.length)
+      return;
+
+    const block = this._editingBlocks[editingIndex];
+    this._editingSlotIndex = editingIndex;
+    this._editingSlotData = {
+      startTime: block.startTime,
+      endTime: block.endTime,
+      temperature: block.temperature,
+    };
+  }
+
+  private _startSlotEditFromDisplay(displayIndex: number, displayBlocks: TimeBlock[]): void {
+    if (!this._editingBlocks) return;
+
+    const displayBlock = displayBlocks[displayIndex];
+
+    // Find the corresponding block in _editingBlocks
+    const editingIndex = this._editingBlocks.findIndex(
+      (b) =>
+        b.startMinutes === displayBlock.startMinutes &&
+        b.endMinutes === displayBlock.endMinutes &&
+        b.temperature === displayBlock.temperature,
+    );
+
+    if (editingIndex === -1) return;
+
+    this._startSlotEdit(editingIndex);
+  }
+
+  private _cancelSlotEdit(): void {
+    this._editingSlotIndex = undefined;
+    this._editingSlotData = undefined;
+  }
+
+  private _saveSlotEdit(): void {
+    if (
+      this._editingSlotIndex === undefined ||
+      !this._editingSlotData ||
+      !this._editingBlocks ||
+      this._editingBaseTemperature === undefined
+    ) {
+      return;
+    }
+
+    const index = this._editingSlotIndex;
+    const { startTime, endTime, temperature } = this._editingSlotData;
+
+    // Create the updated block
+    const updatedBlock: TimeBlock = {
+      startTime,
+      startMinutes: timeToMinutes(startTime),
+      endTime,
+      endMinutes: timeToMinutes(endTime),
+      temperature,
+      slot: index + 1,
+    };
+
+    // Get existing blocks without the one being edited
+    const otherBlocks = this._editingBlocks.filter((_, i) => i !== index);
+
+    // Insert the updated block, handling overlaps
+    const newBlocks = insertBlockWithSplitting(
+      otherBlocks,
+      updatedBlock,
+      this._editingBaseTemperature,
+    );
+
+    // Sort chronologically and merge consecutive blocks with same temperature
+    const sortedBlocks = sortBlocksChronologically(newBlocks);
+    const mergedBlocks = mergeConsecutiveBlocks(sortedBlocks);
+
+    // Save history state
+    this._saveHistoryState();
+
+    // Update editing blocks
+    this._editingBlocks = mergedBlocks;
+    this._editingSlotIndex = undefined;
+    this._editingSlotData = undefined;
+
+    // Update validation warnings
+    this._updateValidationWarnings();
+  }
+
+  private _addNewSlot(): void {
+    if (!this._editingBlocks || this._editingBaseTemperature === undefined) return;
+    if (this._editingBlocks.length >= 12) return;
+
+    // Find the first available gap or add at end
+    let newStartMinutes = 0;
+    let newEndMinutes = 60; // Default 1 hour slot
+
+    if (this._editingBlocks.length > 0) {
+      const sortedBlocks = sortBlocksChronologically(this._editingBlocks);
+      const lastBlock = sortedBlocks[sortedBlocks.length - 1];
+
+      // Check if there's room after the last block
+      if (lastBlock.endMinutes < 1440) {
+        newStartMinutes = lastBlock.endMinutes;
+        newEndMinutes = Math.min(newStartMinutes + 60, 1440);
+      } else {
+        // Find a gap in existing blocks
+        let foundGap = false;
+        for (let i = 0; i < sortedBlocks.length; i++) {
+          const expectedStart = i === 0 ? 0 : sortedBlocks[i - 1].endMinutes;
+          if (sortedBlocks[i].startMinutes > expectedStart) {
+            newStartMinutes = expectedStart;
+            newEndMinutes = sortedBlocks[i].startMinutes;
+            foundGap = true;
+            break;
+          }
+        }
+        if (!foundGap) {
+          // No gaps available, don't add
+          return;
+        }
+      }
+    }
+
+    const newBlock: TimeBlock = {
+      startTime: minutesToTime(newStartMinutes),
+      startMinutes: newStartMinutes,
+      endTime: minutesToTime(newEndMinutes),
+      endMinutes: newEndMinutes,
+      temperature: this._editingBaseTemperature,
+      slot: this._editingBlocks.length + 1,
+    };
+
+    // Save history state
+    this._saveHistoryState();
+
+    // Insert the new block
+    const newBlocks = insertBlockWithSplitting(
+      this._editingBlocks,
+      newBlock,
+      this._editingBaseTemperature,
+    );
+    const mergedBlocks = mergeConsecutiveBlocks(sortBlocksChronologically(newBlocks));
+
+    this._editingBlocks = mergedBlocks;
+
+    // Start editing the newly added slot
+    const newIndex = mergedBlocks.findIndex(
+      (b) => b.startMinutes === newStartMinutes && b.endMinutes === newEndMinutes,
+    );
+    if (newIndex >= 0) {
+      this._startSlotEdit(newIndex);
+    }
+
+    this._updateValidationWarnings();
+  }
+
   private _renderEditor() {
     if (!this._editingWeekday || !this._editingBlocks) return html``;
+
+    // Fill gaps with base temperature for display
+    const displayBlocks =
+      this._editingBaseTemperature !== undefined
+        ? fillGapsWithBaseTemperature(this._editingBlocks, this._editingBaseTemperature)
+        : this._editingBlocks;
 
     return html`
       <div class="editor">
@@ -1751,8 +1923,10 @@ export class HomematicScheduleCard extends LitElement {
         <!-- Base Temperature Section -->
         <div class="base-temperature-section">
           <div class="base-temperature-header">
-            <span class="base-temp-label">Base Temperature</span>
-            <span class="base-temp-description">Temperature for unscheduled periods</span>
+            <span class="base-temp-label">${this._translations.ui.baseTemperature}</span>
+            <span class="base-temp-description"
+              >${this._translations.ui.baseTemperatureDescription}</span
+            >
           </div>
           <div class="base-temperature-input">
             <input
@@ -1763,6 +1937,7 @@ export class HomematicScheduleCard extends LitElement {
               min=${this._minTemp}
               max=${this._maxTemp}
               @change=${(e: Event) => {
+                this._saveHistoryState();
                 this._editingBaseTemperature = parseFloat((e.target as HTMLInputElement).value);
                 this.requestUpdate();
               }}
@@ -1775,51 +1950,138 @@ export class HomematicScheduleCard extends LitElement {
           </div>
         </div>
 
-        <div class="editor-content-label">Temperature Periods</div>
+        <div class="editor-content-label">${this._translations.ui.temperaturePeriods}</div>
         <div class="editor-content">
-          ${this._editingBlocks.map((block, index) => {
-            // Calculate min/max time constraints
-            const prevBlock = index > 0 ? this._editingBlocks![index - 1] : null;
-            const nextBlock =
-              index < this._editingBlocks!.length - 1 ? this._editingBlocks![index + 1] : null;
-            const minTime = prevBlock ? prevBlock.endTime : "00:00";
-            const maxTime = nextBlock ? nextBlock.endTime : "24:00";
+          <div class="time-block-header">
+            <span class="header-cell header-from">${this._translations.ui.from}</span>
+            <span class="header-cell header-to">${this._translations.ui.to}</span>
+            <span class="header-cell header-temp">Temp</span>
+            <span class="header-cell header-actions"></span>
+          </div>
+          ${displayBlocks.map((block, displayIndex) => {
+            // Find if this display block corresponds to an editing block
+            const editingIndex = this._editingBlocks!.findIndex(
+              (b) =>
+                b.startMinutes === block.startMinutes &&
+                b.endMinutes === block.endMinutes &&
+                b.temperature === block.temperature,
+            );
 
+            const isActualBlock = editingIndex !== -1;
+            const isEditing =
+              this._editingSlotIndex !== undefined &&
+              this._editingSlotIndex === editingIndex &&
+              this._editingSlotData !== undefined;
+
+            const isBaseTemp = !isActualBlock;
+
+            if (isEditing && this._editingSlotData) {
+              // Editing mode for this slot
+              return html`
+                <div class="time-block-editor editing">
+                  <input
+                    type="time"
+                    class="time-input"
+                    .value=${this._editingSlotData.startTime}
+                    step="${(this._config?.time_step_minutes || 15) * 60}"
+                    @change=${(e: Event) => {
+                      if (this._editingSlotData) {
+                        this._editingSlotData = {
+                          ...this._editingSlotData,
+                          startTime: (e.target as HTMLInputElement).value,
+                        };
+                        this.requestUpdate();
+                      }
+                    }}
+                  />
+                  <input
+                    type="time"
+                    class="time-input"
+                    .value=${this._editingSlotData.endTime === "24:00"
+                      ? "23:59"
+                      : this._editingSlotData.endTime}
+                    step="${(this._config?.time_step_minutes || 15) * 60}"
+                    @change=${(e: Event) => {
+                      if (this._editingSlotData) {
+                        let value = (e.target as HTMLInputElement).value;
+                        // Convert 23:59 to 24:00 for end of day
+                        if (value === "23:59") value = "24:00";
+                        this._editingSlotData = {
+                          ...this._editingSlotData,
+                          endTime: value,
+                        };
+                        this.requestUpdate();
+                      }
+                    }}
+                  />
+                  <div class="temp-input-group">
+                    <input
+                      type="number"
+                      class="temp-input"
+                      .value=${this._editingSlotData.temperature.toString()}
+                      step=${this._tempStep}
+                      min=${this._minTemp}
+                      max=${this._maxTemp}
+                      @change=${(e: Event) => {
+                        if (this._editingSlotData) {
+                          this._editingSlotData = {
+                            ...this._editingSlotData,
+                            temperature: parseFloat((e.target as HTMLInputElement).value),
+                          };
+                          this.requestUpdate();
+                        }
+                      }}
+                    />
+                    <span class="temp-unit">${this._config?.temperature_unit || "°C"}</span>
+                  </div>
+                  <div class="slot-actions">
+                    <button class="slot-save-btn" @click=${this._saveSlotEdit}>
+                      ${this._translations.ui.saveSlot}
+                    </button>
+                    <button class="slot-cancel-btn" @click=${this._cancelSlotEdit}>
+                      ${this._translations.ui.cancelSlotEdit}
+                    </button>
+                  </div>
+                  <div
+                    class="color-indicator"
+                    style="background-color: ${getTemperatureColor(
+                      this._editingSlotData.temperature,
+                    )}"
+                  ></div>
+                </div>
+              `;
+            }
+
+            // Display mode for this slot
             return html`
-              <div class="time-block-editor">
-                <div class="block-number">${index + 1}</div>
-                <input
-                  type="time"
-                  class="time-input"
-                  .value=${block.endTime}
-                  min=${minTime}
-                  max=${maxTime}
-                  step="${(this._config?.time_step_minutes || 15) * 60}"
-                  @change=${(e: Event) =>
-                    this._updateTimeBlock(index, {
-                      endTime: (e.target as HTMLInputElement).value,
-                    })}
-                />
-                <input
-                  type="number"
-                  class="temp-input"
-                  .value=${block.temperature.toString()}
-                  step=${this._tempStep}
-                  min=${this._minTemp}
-                  max=${this._maxTemp}
-                  @change=${(e: Event) =>
-                    this._updateTimeBlock(index, {
-                      temperature: parseFloat((e.target as HTMLInputElement).value),
-                    })}
-                />
-                <span class="temp-unit">${this._config?.temperature_unit || "°C"}</span>
-                ${this._editingBlocks!.length > 1
-                  ? html`
-                      <button class="remove-btn" @click=${() => this._removeTimeBlock(index)}>
-                        🗑️
-                      </button>
-                    `
-                  : ""}
+              <div class="time-block-editor ${isBaseTemp ? "base-temp-slot" : ""}">
+                <span class="time-display">${block.startTime}</span>
+                <span class="time-display">${block.endTime}</span>
+                <div class="temp-display-group">
+                  <span class="temp-display">${block.temperature.toFixed(1)}</span>
+                  <span class="temp-unit">${this._config?.temperature_unit || "°C"}</span>
+                </div>
+                <div class="slot-actions">
+                  ${isBaseTemp
+                    ? html``
+                    : html`
+                        <button
+                          class="slot-edit-btn"
+                          @click=${() =>
+                            this._startSlotEditFromDisplay(displayIndex, displayBlocks)}
+                          ?disabled=${this._editingSlotIndex !== undefined}
+                        >
+                          ${this._translations.ui.editSlot}
+                        </button>
+                        <button
+                          class="remove-btn"
+                          @click=${() => this._removeTimeBlockByIndex(displayIndex, displayBlocks)}
+                          ?disabled=${this._editingSlotIndex !== undefined}
+                        >
+                          🗑️
+                        </button>
+                      `}
+                </div>
                 <div
                   class="color-indicator"
                   style="background-color: ${getTemperatureColor(block.temperature)}"
@@ -1827,9 +2089,9 @@ export class HomematicScheduleCard extends LitElement {
               </div>
             `;
           })}
-          ${this._editingBlocks.length < 12
+          ${this._editingBlocks.length < 12 && this._editingSlotIndex === undefined
             ? html`
-                <button class="add-btn" @click=${this._addTimeBlock}>
+                <button class="add-btn" @click=${this._addNewSlot}>
                   ${this._translations.ui.addTimeBlock}
                 </button>
               `
@@ -1846,6 +2108,33 @@ export class HomematicScheduleCard extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private _removeTimeBlockByIndex(displayIndex: number, displayBlocks: TimeBlock[]): void {
+    if (!this._editingBlocks || this._editingBaseTemperature === undefined) return;
+
+    const blockToRemove = displayBlocks[displayIndex];
+
+    // Find the corresponding block in _editingBlocks
+    const editingIndex = this._editingBlocks.findIndex(
+      (b) =>
+        b.startMinutes === blockToRemove.startMinutes &&
+        b.endMinutes === blockToRemove.endMinutes &&
+        b.temperature === blockToRemove.temperature,
+    );
+
+    if (editingIndex === -1) return;
+
+    // Save history state
+    this._saveHistoryState();
+
+    // Remove the block
+    const newBlocks = this._editingBlocks.filter((_, i) => i !== editingIndex);
+
+    // Merge consecutive blocks with same temperature
+    this._editingBlocks = mergeConsecutiveBlocks(sortBlocksChronologically(newBlocks));
+
+    this._updateValidationWarnings();
   }
 
   static get styles() {
@@ -2533,13 +2822,104 @@ export class HomematicScheduleCard extends LitElement {
         overflow-y: auto;
       }
 
+      .time-block-header {
+        display: grid;
+        grid-template-columns: 70px 70px 90px 1fr 24px;
+        gap: 8px;
+        align-items: center;
+        padding: 8px;
+        border-bottom: 2px solid var(--divider-color);
+        font-weight: 500;
+        font-size: 12px;
+        color: var(--secondary-text-color);
+        text-transform: uppercase;
+      }
+
+      .header-cell {
+        text-align: left;
+      }
+
       .time-block-editor {
         display: grid;
-        grid-template-columns: 40px 100px 80px 40px 40px 20px;
+        grid-template-columns: 70px 70px 90px 1fr 24px;
         gap: 8px;
         align-items: center;
         padding: 8px;
         border-bottom: 1px solid var(--divider-color);
+      }
+
+      .time-block-editor.editing {
+        background-color: var(--primary-color-light, rgba(3, 169, 244, 0.1));
+        border: 1px solid var(--primary-color);
+        border-radius: 4px;
+        margin: 4px 0;
+      }
+
+      .time-block-editor.base-temp-slot {
+        opacity: 0.6;
+        background-color: var(--divider-color);
+      }
+
+      .time-display {
+        font-size: 14px;
+        color: var(--primary-text-color);
+        font-family: monospace;
+      }
+
+      .temp-display-group,
+      .temp-input-group {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .temp-display {
+        font-size: 14px;
+        color: var(--primary-text-color);
+        font-weight: 500;
+      }
+
+      .slot-actions {
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+      }
+
+      .slot-edit-btn,
+      .slot-save-btn,
+      .slot-cancel-btn {
+        padding: 4px 8px;
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        background-color: var(--card-background-color);
+        color: var(--primary-text-color);
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .slot-edit-btn:hover,
+      .slot-save-btn:hover,
+      .slot-cancel-btn:hover {
+        background-color: var(--divider-color);
+      }
+
+      .slot-save-btn {
+        background-color: var(--primary-color);
+        color: var(--text-primary-color);
+        border-color: var(--primary-color);
+      }
+
+      .slot-cancel-btn {
+        background-color: var(--error-color, #e74c3c);
+        color: white;
+        border-color: var(--error-color, #e74c3c);
+      }
+
+      .slot-edit-btn:disabled,
+      .remove-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
       }
 
       .block-number {
@@ -2555,6 +2935,16 @@ export class HomematicScheduleCard extends LitElement {
         background-color: var(--card-background-color);
         color: var(--primary-text-color);
         font-size: 14px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .time-input {
+        max-width: 70px;
+      }
+
+      .temp-input {
+        max-width: 60px;
       }
 
       .temp-unit {
@@ -2579,6 +2969,7 @@ export class HomematicScheduleCard extends LitElement {
         height: 20px;
         border-radius: 4px;
         border: 1px solid var(--divider-color);
+        flex-shrink: 0;
       }
 
       .add-btn {

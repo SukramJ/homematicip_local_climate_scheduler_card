@@ -576,3 +576,192 @@ export function validateSimpleProfileData(data: unknown): ValidationMessage | nu
 
   return null;
 }
+
+/**
+ * Merge consecutive time blocks with the same temperature
+ * Returns a new array with merged blocks
+ */
+export function mergeConsecutiveBlocks(blocks: TimeBlock[]): TimeBlock[] {
+  if (blocks.length === 0) return [];
+
+  // Sort blocks by start time first
+  const sortedBlocks = [...blocks].sort((a, b) => a.startMinutes - b.startMinutes);
+  const result: TimeBlock[] = [];
+
+  let currentBlock = { ...sortedBlocks[0] };
+
+  for (let i = 1; i < sortedBlocks.length; i++) {
+    const nextBlock = sortedBlocks[i];
+
+    // Check if blocks are consecutive and have the same temperature
+    if (
+      currentBlock.endMinutes === nextBlock.startMinutes &&
+      currentBlock.temperature === nextBlock.temperature
+    ) {
+      // Merge: extend current block's end time
+      currentBlock = {
+        ...currentBlock,
+        endTime: nextBlock.endTime,
+        endMinutes: nextBlock.endMinutes,
+      };
+    } else {
+      // Push current block and start new one
+      result.push(currentBlock);
+      currentBlock = { ...nextBlock };
+    }
+  }
+
+  // Push the last block
+  result.push(currentBlock);
+
+  // Re-assign slot numbers
+  return result.map((block, index) => ({
+    ...block,
+    slot: index + 1,
+  }));
+}
+
+/**
+ * Insert a new time block, splitting existing blocks as needed
+ * If the new block overlaps with existing blocks, they are split accordingly
+ * Returns a new array with the blocks properly arranged
+ */
+export function insertBlockWithSplitting(
+  existingBlocks: TimeBlock[],
+  newBlock: TimeBlock,
+  _baseTemperature: number,
+): TimeBlock[] {
+  const result: TimeBlock[] = [];
+  const newStart = newBlock.startMinutes;
+  const newEnd = newBlock.endMinutes;
+
+  // Sort existing blocks by start time
+  const sortedBlocks = [...existingBlocks].sort((a, b) => a.startMinutes - b.startMinutes);
+
+  for (const block of sortedBlocks) {
+    const blockStart = block.startMinutes;
+    const blockEnd = block.endMinutes;
+
+    // Case 1: Block is completely before the new block
+    if (blockEnd <= newStart) {
+      result.push(block);
+      continue;
+    }
+
+    // Case 2: Block is completely after the new block
+    if (blockStart >= newEnd) {
+      result.push(block);
+      continue;
+    }
+
+    // Case 3: Block overlaps with new block - need to split
+    // Part before the new block
+    if (blockStart < newStart) {
+      result.push({
+        ...block,
+        endTime: minutesToTime(newStart),
+        endMinutes: newStart,
+        slot: result.length + 1,
+      });
+    }
+
+    // Part after the new block
+    if (blockEnd > newEnd) {
+      result.push({
+        ...block,
+        startTime: minutesToTime(newEnd),
+        startMinutes: newEnd,
+        slot: result.length + 1,
+      });
+    }
+  }
+
+  // Add the new block
+  result.push({
+    ...newBlock,
+    slot: result.length + 1,
+  });
+
+  // Sort by start time and merge consecutive blocks with same temperature
+  const sorted = result.sort((a, b) => a.startMinutes - b.startMinutes);
+  const merged = mergeConsecutiveBlocks(sorted);
+
+  return merged;
+}
+
+/**
+ * Fill gaps in schedule until 24:00 with base temperature blocks
+ * Returns complete day coverage from first block start to 24:00
+ */
+export function fillGapsWithBaseTemperature(
+  blocks: TimeBlock[],
+  baseTemperature: number,
+): TimeBlock[] {
+  if (blocks.length === 0) {
+    // If no blocks, return a single block covering the entire day with base temperature
+    return [
+      {
+        startTime: "00:00",
+        startMinutes: 0,
+        endTime: "24:00",
+        endMinutes: 1440,
+        temperature: baseTemperature,
+        slot: 1,
+      },
+    ];
+  }
+
+  // Sort blocks by start time
+  const sortedBlocks = [...blocks].sort((a, b) => a.startMinutes - b.startMinutes);
+  const result: TimeBlock[] = [];
+  let currentMinutes = 0;
+
+  for (const block of sortedBlocks) {
+    // If there's a gap before this block, fill with base temperature
+    if (block.startMinutes > currentMinutes) {
+      result.push({
+        startTime: minutesToTime(currentMinutes),
+        startMinutes: currentMinutes,
+        endTime: block.startTime,
+        endMinutes: block.startMinutes,
+        temperature: baseTemperature,
+        slot: result.length + 1,
+      });
+    }
+
+    // Add the current block
+    result.push({
+      ...block,
+      slot: result.length + 1,
+    });
+
+    currentMinutes = block.endMinutes;
+  }
+
+  // Fill gap at the end if needed (until 24:00)
+  if (currentMinutes < 1440) {
+    result.push({
+      startTime: minutesToTime(currentMinutes),
+      startMinutes: currentMinutes,
+      endTime: "24:00",
+      endMinutes: 1440,
+      temperature: baseTemperature,
+      slot: result.length + 1,
+    });
+  }
+
+  // Merge consecutive blocks with same temperature
+  return mergeConsecutiveBlocks(result);
+}
+
+/**
+ * Sort blocks chronologically by start time and renumber slots
+ */
+export function sortBlocksChronologically(blocks: TimeBlock[]): TimeBlock[] {
+  return [...blocks]
+    .sort((a, b) => a.startMinutes - b.startMinutes)
+    .map((block, index) => ({
+      ...block,
+      slot: index + 1,
+    }));
+}

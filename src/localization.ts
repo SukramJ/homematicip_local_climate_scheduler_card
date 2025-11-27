@@ -46,6 +46,14 @@ export interface Translations {
     enableDragDrop: string;
     disableDragDrop: string;
     confirmDiscardChanges: string;
+    from: string;
+    to: string;
+    baseTemperature: string;
+    baseTemperatureDescription: string;
+    temperaturePeriods: string;
+    editSlot: string;
+    saveSlot: string;
+    cancelSlotEdit: string;
   };
   // Error messages
   errors: {
@@ -117,6 +125,14 @@ const en: Translations = {
     enableDragDrop: "Enable drag & drop mode",
     disableDragDrop: "Disable drag & drop mode",
     confirmDiscardChanges: "You have unsaved changes. Do you want to discard them?",
+    from: "From",
+    to: "To",
+    baseTemperature: "Base Temperature",
+    baseTemperatureDescription: "Temperature for unscheduled periods",
+    temperaturePeriods: "Temperature Periods",
+    editSlot: "Edit",
+    saveSlot: "Save",
+    cancelSlotEdit: "Cancel",
   },
   errors: {
     failedToChangeProfile: "Failed to change profile: {error}",
@@ -203,6 +219,14 @@ const de: Translations = {
     enableDragDrop: "Drag & Drop Modus aktivieren",
     disableDragDrop: "Drag & Drop Modus deaktivieren",
     confirmDiscardChanges: "Sie haben ungespeicherte Änderungen. Möchten Sie diese verwerfen?",
+    from: "Von",
+    to: "Bis",
+    baseTemperature: "Basistemperatur",
+    baseTemperatureDescription: "Temperatur für nicht geplante Zeiträume",
+    temperaturePeriods: "Temperaturperioden",
+    editSlot: "Bearbeiten",
+    saveSlot: "Speichern",
+    cancelSlotEdit: "Abbrechen",
   },
   errors: {
     failedToChangeProfile: "Fehler beim Wechseln des Profils: {error}",

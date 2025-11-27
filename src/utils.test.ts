@@ -16,6 +16,10 @@ import {
   getTemperatureGradient,
   roundTimeToQuarter,
   formatTemperature,
+  mergeConsecutiveBlocks,
+  insertBlockWithSplitting,
+  fillGapsWithBaseTemperature,
+  sortBlocksChronologically,
   TimeBlock,
   ValidationMessage,
   ValidationMessageKey,
@@ -111,6 +115,44 @@ describe("Utils", () => {
         "12": { ENDTIME: "24:00", TEMPERATURE: 16 },
         "13": { ENDTIME: "24:00", TEMPERATURE: 16 },
       };
+
+      const blocks = parseWeekdaySchedule(weekdayData);
+
+      expect(blocks).toHaveLength(2);
+    });
+
+    it("should skip malformed slots gracefully", () => {
+      const weekdayData: WeekdayData = {
+        "1": { ENDTIME: "08:00", TEMPERATURE: 20 },
+        "2": null as unknown as { ENDTIME: string; TEMPERATURE: number }, // null slot
+        "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
+      };
+
+      const blocks = parseWeekdaySchedule(weekdayData);
+
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].endTime).toBe("08:00");
+      expect(blocks[1].endTime).toBe("24:00");
+    });
+
+    it("should skip slots with missing ENDTIME", () => {
+      const weekdayData = {
+        "1": { ENDTIME: "08:00", TEMPERATURE: 20 },
+        "2": { TEMPERATURE: 21 } as unknown as { ENDTIME: string; TEMPERATURE: number },
+        "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
+      } as WeekdayData;
+
+      const blocks = parseWeekdaySchedule(weekdayData);
+
+      expect(blocks).toHaveLength(2);
+    });
+
+    it("should skip slots with undefined TEMPERATURE", () => {
+      const weekdayData = {
+        "1": { ENDTIME: "08:00", TEMPERATURE: 20 },
+        "2": { ENDTIME: "16:00" } as unknown as { ENDTIME: string; TEMPERATURE: number },
+        "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
+      } as WeekdayData;
 
       const blocks = parseWeekdaySchedule(weekdayData);
 
@@ -1722,6 +1764,451 @@ describe("Utils", () => {
       expect(error?.key).toBe("weekdayValidationError");
       expect(error?.params?.weekday).toBe("MONDAY");
       expect(error?.nested?.key).toBe("blockEndBeforeStart");
+    });
+  });
+
+  describe("mergeConsecutiveBlocks", () => {
+    it("should return empty array for empty input", () => {
+      expect(mergeConsecutiveBlocks([])).toEqual([]);
+    });
+
+    it("should not merge blocks with different temperatures", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "08:00",
+          endMinutes: 480,
+          temperature: 18.0,
+          slot: 1,
+        },
+        {
+          startTime: "08:00",
+          startMinutes: 480,
+          endTime: "16:00",
+          endMinutes: 960,
+          temperature: 22.0,
+          slot: 2,
+        },
+      ];
+
+      const result = mergeConsecutiveBlocks(blocks);
+      expect(result).toHaveLength(2);
+    });
+
+    it("should merge consecutive blocks with same temperature", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "08:00",
+          endMinutes: 480,
+          temperature: 18.0,
+          slot: 1,
+        },
+        {
+          startTime: "08:00",
+          startMinutes: 480,
+          endTime: "16:00",
+          endMinutes: 960,
+          temperature: 18.0,
+          slot: 2,
+        },
+      ];
+
+      const result = mergeConsecutiveBlocks(blocks);
+      expect(result).toHaveLength(1);
+      expect(result[0].startTime).toBe("00:00");
+      expect(result[0].endTime).toBe("16:00");
+      expect(result[0].temperature).toBe(18.0);
+    });
+
+    it("should merge multiple consecutive blocks", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "04:00",
+          endMinutes: 240,
+          temperature: 18.0,
+          slot: 1,
+        },
+        {
+          startTime: "04:00",
+          startMinutes: 240,
+          endTime: "08:00",
+          endMinutes: 480,
+          temperature: 18.0,
+          slot: 2,
+        },
+        {
+          startTime: "08:00",
+          startMinutes: 480,
+          endTime: "12:00",
+          endMinutes: 720,
+          temperature: 18.0,
+          slot: 3,
+        },
+      ];
+
+      const result = mergeConsecutiveBlocks(blocks);
+      expect(result).toHaveLength(1);
+      expect(result[0].endTime).toBe("12:00");
+    });
+
+    it("should renumber slots after merging", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "08:00",
+          endMinutes: 480,
+          temperature: 18.0,
+          slot: 1,
+        },
+        {
+          startTime: "08:00",
+          startMinutes: 480,
+          endTime: "16:00",
+          endMinutes: 960,
+          temperature: 22.0,
+          slot: 2,
+        },
+        {
+          startTime: "16:00",
+          startMinutes: 960,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 22.0,
+          slot: 3,
+        },
+      ];
+
+      const result = mergeConsecutiveBlocks(blocks);
+      expect(result).toHaveLength(2);
+      expect(result[0].slot).toBe(1);
+      expect(result[1].slot).toBe(2);
+    });
+  });
+
+  describe("insertBlockWithSplitting", () => {
+    it("should add block to empty array", () => {
+      const newBlock: TimeBlock = {
+        startTime: "08:00",
+        startMinutes: 480,
+        endTime: "16:00",
+        endMinutes: 960,
+        temperature: 22.0,
+        slot: 1,
+      };
+
+      const result = insertBlockWithSplitting([], newBlock, 18.0);
+      expect(result).toHaveLength(1);
+      expect(result[0].startTime).toBe("08:00");
+      expect(result[0].endTime).toBe("16:00");
+    });
+
+    it("should split existing block when new block overlaps in the middle", () => {
+      const existingBlocks: TimeBlock[] = [
+        {
+          startTime: "10:00",
+          startMinutes: 600,
+          endTime: "16:00",
+          endMinutes: 960,
+          temperature: 20.0,
+          slot: 1,
+        },
+      ];
+
+      const newBlock: TimeBlock = {
+        startTime: "12:00",
+        startMinutes: 720,
+        endTime: "14:00",
+        endMinutes: 840,
+        temperature: 22.0,
+        slot: 1,
+      };
+
+      const result = insertBlockWithSplitting(existingBlocks, newBlock, 18.0);
+      // Should result in 3 blocks: 10:00-12:00 (20°), 12:00-14:00 (22°), 14:00-16:00 (20°)
+      expect(result).toHaveLength(3);
+      expect(result[0].startTime).toBe("10:00");
+      expect(result[0].endTime).toBe("12:00");
+      expect(result[0].temperature).toBe(20.0);
+      expect(result[1].startTime).toBe("12:00");
+      expect(result[1].endTime).toBe("14:00");
+      expect(result[1].temperature).toBe(22.0);
+      expect(result[2].startTime).toBe("14:00");
+      expect(result[2].endTime).toBe("16:00");
+      expect(result[2].temperature).toBe(20.0);
+    });
+
+    it("should merge blocks with same temperature after insertion", () => {
+      const existingBlocks: TimeBlock[] = [
+        {
+          startTime: "10:00",
+          startMinutes: 600,
+          endTime: "16:00",
+          endMinutes: 960,
+          temperature: 20.0,
+          slot: 1,
+        },
+      ];
+
+      const newBlock: TimeBlock = {
+        startTime: "12:00",
+        startMinutes: 720,
+        endTime: "14:00",
+        endMinutes: 840,
+        temperature: 20.0, // Same as existing
+        slot: 1,
+      };
+
+      const result = insertBlockWithSplitting(existingBlocks, newBlock, 18.0);
+      // Should remain 1 block because temperatures are the same
+      expect(result).toHaveLength(1);
+      expect(result[0].startTime).toBe("10:00");
+      expect(result[0].endTime).toBe("16:00");
+    });
+
+    it("should keep blocks that are completely before the new block", () => {
+      const existingBlocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "06:00",
+          endMinutes: 360,
+          temperature: 18.0,
+          slot: 1,
+        },
+      ];
+
+      const newBlock: TimeBlock = {
+        startTime: "08:00",
+        startMinutes: 480,
+        endTime: "10:00",
+        endMinutes: 600,
+        temperature: 22.0,
+        slot: 1,
+      };
+
+      const result = insertBlockWithSplitting(existingBlocks, newBlock, 18.0);
+      expect(result).toHaveLength(2);
+      expect(result[0].startTime).toBe("00:00");
+      expect(result[0].endTime).toBe("06:00");
+      expect(result[1].startTime).toBe("08:00");
+      expect(result[1].endTime).toBe("10:00");
+    });
+
+    it("should keep blocks that are completely after the new block", () => {
+      const existingBlocks: TimeBlock[] = [
+        {
+          startTime: "18:00",
+          startMinutes: 1080,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 18.0,
+          slot: 1,
+        },
+      ];
+
+      const newBlock: TimeBlock = {
+        startTime: "08:00",
+        startMinutes: 480,
+        endTime: "10:00",
+        endMinutes: 600,
+        temperature: 22.0,
+        slot: 1,
+      };
+
+      const result = insertBlockWithSplitting(existingBlocks, newBlock, 18.0);
+      expect(result).toHaveLength(2);
+      expect(result[0].startTime).toBe("08:00");
+      expect(result[0].endTime).toBe("10:00");
+      expect(result[1].startTime).toBe("18:00");
+      expect(result[1].endTime).toBe("24:00");
+    });
+
+    it("should handle multiple non-overlapping blocks correctly", () => {
+      const existingBlocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "06:00",
+          endMinutes: 360,
+          temperature: 18.0,
+          slot: 1,
+        },
+        {
+          startTime: "18:00",
+          startMinutes: 1080,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 18.0,
+          slot: 2,
+        },
+      ];
+
+      const newBlock: TimeBlock = {
+        startTime: "10:00",
+        startMinutes: 600,
+        endTime: "14:00",
+        endMinutes: 840,
+        temperature: 22.0,
+        slot: 1,
+      };
+
+      const result = insertBlockWithSplitting(existingBlocks, newBlock, 18.0);
+      expect(result).toHaveLength(3);
+      expect(result[0].startTime).toBe("00:00");
+      expect(result[0].endTime).toBe("06:00");
+      expect(result[1].startTime).toBe("10:00");
+      expect(result[1].endTime).toBe("14:00");
+      expect(result[2].startTime).toBe("18:00");
+      expect(result[2].endTime).toBe("24:00");
+    });
+  });
+
+  describe("fillGapsWithBaseTemperature", () => {
+    it("should return full day block for empty input", () => {
+      const result = fillGapsWithBaseTemperature([], 18.0);
+      expect(result).toHaveLength(1);
+      expect(result[0].startTime).toBe("00:00");
+      expect(result[0].endTime).toBe("24:00");
+      expect(result[0].temperature).toBe(18.0);
+    });
+
+    it("should fill gaps at start and end", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "08:00",
+          startMinutes: 480,
+          endTime: "16:00",
+          endMinutes: 960,
+          temperature: 22.0,
+          slot: 1,
+        },
+      ];
+
+      const result = fillGapsWithBaseTemperature(blocks, 18.0);
+      expect(result).toHaveLength(3);
+      expect(result[0].startTime).toBe("00:00");
+      expect(result[0].endTime).toBe("08:00");
+      expect(result[0].temperature).toBe(18.0);
+      expect(result[1].startTime).toBe("08:00");
+      expect(result[1].endTime).toBe("16:00");
+      expect(result[1].temperature).toBe(22.0);
+      expect(result[2].startTime).toBe("16:00");
+      expect(result[2].endTime).toBe("24:00");
+      expect(result[2].temperature).toBe(18.0);
+    });
+
+    it("should fill gap between blocks", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "08:00",
+          endMinutes: 480,
+          temperature: 20.0,
+          slot: 1,
+        },
+        {
+          startTime: "16:00",
+          startMinutes: 960,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 20.0,
+          slot: 2,
+        },
+      ];
+
+      const result = fillGapsWithBaseTemperature(blocks, 18.0);
+      expect(result).toHaveLength(3);
+      expect(result[1].startTime).toBe("08:00");
+      expect(result[1].endTime).toBe("16:00");
+      expect(result[1].temperature).toBe(18.0);
+    });
+
+    it("should merge consecutive blocks with same temperature after filling", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "08:00",
+          startMinutes: 480,
+          endTime: "16:00",
+          endMinutes: 960,
+          temperature: 18.0, // Same as base temperature
+          slot: 1,
+        },
+      ];
+
+      const result = fillGapsWithBaseTemperature(blocks, 18.0);
+      // Should merge to single block since all have same temperature
+      expect(result).toHaveLength(1);
+      expect(result[0].startTime).toBe("00:00");
+      expect(result[0].endTime).toBe("24:00");
+      expect(result[0].temperature).toBe(18.0);
+    });
+  });
+
+  describe("sortBlocksChronologically", () => {
+    it("should sort blocks by start time", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "16:00",
+          startMinutes: 960,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 18.0,
+          slot: 3,
+        },
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "08:00",
+          endMinutes: 480,
+          temperature: 18.0,
+          slot: 1,
+        },
+        {
+          startTime: "08:00",
+          startMinutes: 480,
+          endTime: "16:00",
+          endMinutes: 960,
+          temperature: 22.0,
+          slot: 2,
+        },
+      ];
+
+      const result = sortBlocksChronologically(blocks);
+      expect(result[0].startTime).toBe("00:00");
+      expect(result[1].startTime).toBe("08:00");
+      expect(result[2].startTime).toBe("16:00");
+    });
+
+    it("should renumber slots sequentially", () => {
+      const blocks: TimeBlock[] = [
+        {
+          startTime: "16:00",
+          startMinutes: 960,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 18.0,
+          slot: 5,
+        },
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "08:00",
+          endMinutes: 480,
+          temperature: 18.0,
+          slot: 10,
+        },
+      ];
+
+      const result = sortBlocksChronologically(blocks);
+      expect(result[0].slot).toBe(1);
+      expect(result[1].slot).toBe(2);
     });
   });
 });
