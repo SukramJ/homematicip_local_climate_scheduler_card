@@ -120,6 +120,44 @@ describe("Utils", () => {
 
       expect(blocks).toHaveLength(2);
     });
+
+    it("should skip malformed slots gracefully", () => {
+      const weekdayData: WeekdayData = {
+        "1": { ENDTIME: "08:00", TEMPERATURE: 20 },
+        "2": null as unknown as { ENDTIME: string; TEMPERATURE: number }, // null slot
+        "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
+      };
+
+      const blocks = parseWeekdaySchedule(weekdayData);
+
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].endTime).toBe("08:00");
+      expect(blocks[1].endTime).toBe("24:00");
+    });
+
+    it("should skip slots with missing ENDTIME", () => {
+      const weekdayData = {
+        "1": { ENDTIME: "08:00", TEMPERATURE: 20 },
+        "2": { TEMPERATURE: 21 } as unknown as { ENDTIME: string; TEMPERATURE: number },
+        "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
+      } as WeekdayData;
+
+      const blocks = parseWeekdaySchedule(weekdayData);
+
+      expect(blocks).toHaveLength(2);
+    });
+
+    it("should skip slots with undefined TEMPERATURE", () => {
+      const weekdayData = {
+        "1": { ENDTIME: "08:00", TEMPERATURE: 20 },
+        "2": { ENDTIME: "16:00" } as unknown as { ENDTIME: string; TEMPERATURE: number },
+        "3": { ENDTIME: "24:00", TEMPERATURE: 18 },
+      } as WeekdayData;
+
+      const blocks = parseWeekdaySchedule(weekdayData);
+
+      expect(blocks).toHaveLength(2);
+    });
   });
 
   describe("timeBlocksToWeekdayData", () => {
@@ -1931,6 +1969,103 @@ describe("Utils", () => {
       expect(result).toHaveLength(1);
       expect(result[0].startTime).toBe("10:00");
       expect(result[0].endTime).toBe("16:00");
+    });
+
+    it("should keep blocks that are completely before the new block", () => {
+      const existingBlocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "06:00",
+          endMinutes: 360,
+          temperature: 18.0,
+          slot: 1,
+        },
+      ];
+
+      const newBlock: TimeBlock = {
+        startTime: "08:00",
+        startMinutes: 480,
+        endTime: "10:00",
+        endMinutes: 600,
+        temperature: 22.0,
+        slot: 1,
+      };
+
+      const result = insertBlockWithSplitting(existingBlocks, newBlock, 18.0);
+      expect(result).toHaveLength(2);
+      expect(result[0].startTime).toBe("00:00");
+      expect(result[0].endTime).toBe("06:00");
+      expect(result[1].startTime).toBe("08:00");
+      expect(result[1].endTime).toBe("10:00");
+    });
+
+    it("should keep blocks that are completely after the new block", () => {
+      const existingBlocks: TimeBlock[] = [
+        {
+          startTime: "18:00",
+          startMinutes: 1080,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 18.0,
+          slot: 1,
+        },
+      ];
+
+      const newBlock: TimeBlock = {
+        startTime: "08:00",
+        startMinutes: 480,
+        endTime: "10:00",
+        endMinutes: 600,
+        temperature: 22.0,
+        slot: 1,
+      };
+
+      const result = insertBlockWithSplitting(existingBlocks, newBlock, 18.0);
+      expect(result).toHaveLength(2);
+      expect(result[0].startTime).toBe("08:00");
+      expect(result[0].endTime).toBe("10:00");
+      expect(result[1].startTime).toBe("18:00");
+      expect(result[1].endTime).toBe("24:00");
+    });
+
+    it("should handle multiple non-overlapping blocks correctly", () => {
+      const existingBlocks: TimeBlock[] = [
+        {
+          startTime: "00:00",
+          startMinutes: 0,
+          endTime: "06:00",
+          endMinutes: 360,
+          temperature: 18.0,
+          slot: 1,
+        },
+        {
+          startTime: "18:00",
+          startMinutes: 1080,
+          endTime: "24:00",
+          endMinutes: 1440,
+          temperature: 18.0,
+          slot: 2,
+        },
+      ];
+
+      const newBlock: TimeBlock = {
+        startTime: "10:00",
+        startMinutes: 600,
+        endTime: "14:00",
+        endMinutes: 840,
+        temperature: 22.0,
+        slot: 1,
+      };
+
+      const result = insertBlockWithSplitting(existingBlocks, newBlock, 18.0);
+      expect(result).toHaveLength(3);
+      expect(result[0].startTime).toBe("00:00");
+      expect(result[0].endTime).toBe("06:00");
+      expect(result[1].startTime).toBe("10:00");
+      expect(result[1].endTime).toBe("14:00");
+      expect(result[2].startTime).toBe("18:00");
+      expect(result[2].endTime).toBe("24:00");
     });
   });
 
