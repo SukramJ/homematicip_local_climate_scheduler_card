@@ -41,18 +41,22 @@ export interface ProfileData {
 
 /**
  * Simple schedule period with start time, end time, and temperature
+ * Since version 2.0.0 of homematicip_local, uses lowercase keys for better JSON serialization
  */
 export interface SimpleSchedulePeriod {
-  STARTTIME: string;
-  ENDTIME: string;
-  TEMPERATURE: number;
+  starttime: string;
+  endtime: string;
+  temperature: number;
 }
 
 /**
- * Simple weekday data: [base_temperature, periods[]]
- * This is the new simplified format from aiohomematic
+ * Simple weekday data: object with base_temperature and periods array
+ * This is the new simplified format from aiohomematic (v2.0.0+)
  */
-export type SimpleWeekdayData = [number, SimpleSchedulePeriod[]];
+export interface SimpleWeekdayData {
+  base_temperature: number;
+  periods: SimpleSchedulePeriod[];
+}
 
 /**
  * Simple profile data mapping weekdays to simple weekday data

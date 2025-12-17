@@ -860,7 +860,7 @@ export class HomematicScheduleCard extends LitElement {
         }
 
         // Call the simple schedule service
-        const [baseTemp, periods] = simpleWeekdayData;
+        const { base_temperature: baseTemp, periods } = simpleWeekdayData;
         await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
           entity_id: entityId,
           profile: this._currentProfile,
@@ -945,8 +945,8 @@ export class HomematicScheduleCard extends LitElement {
 
     try {
       // Call the new simple schedule service
-      // simpleWeekdayData is a tuple: [baseTemperature, periods[]]
-      const [baseTemperature, periods] = simpleWeekdayData;
+      // simpleWeekdayData is an object: {base_temperature, periods[]}
+      const { base_temperature: baseTemperature, periods } = simpleWeekdayData;
       await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
         entity_id: entityId,
         profile: this._currentProfile,
@@ -1048,8 +1048,8 @@ export class HomematicScheduleCard extends LitElement {
 
     try {
       // Call the new simple schedule service
-      // simpleWeekdayData is a tuple: [baseTemperature, periods[]]
-      const [baseTemperature, periods] = simpleWeekdayData;
+      // simpleWeekdayData is an object: {base_temperature, periods[]}
+      const { base_temperature: baseTemperature, periods } = simpleWeekdayData;
       await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
         entity_id: entityId,
         profile: this._currentProfile,
@@ -1220,8 +1220,8 @@ export class HomematicScheduleCard extends LitElement {
             for (const weekday of WEEKDAYS) {
               const simpleWeekdayData = importedSchedule[weekday];
               if (simpleWeekdayData) {
-                // simpleWeekdayData is a tuple: [baseTemperature, periods[]]
-                const [baseTemperature, periods] = simpleWeekdayData;
+                // simpleWeekdayData is an object: {base_temperature, periods[]}
+                const { base_temperature: baseTemperature, periods } = simpleWeekdayData;
                 await this.hass.callService("homematicip_local", "set_schedule_simple_weekday", {
                   entity_id: entityId,
                   profile: this._currentProfile,

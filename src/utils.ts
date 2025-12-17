@@ -388,19 +388,19 @@ export function validateProfileData(data: unknown): ValidationMessage | null {
 
 /**
  * Parse simple weekday schedule data into time blocks
- * SimpleWeekdayData is a tuple: [base_temperature, periods[]]
+ * SimpleWeekdayData is an object: {base_temperature, periods[]}
  */
 export function parseSimpleWeekdaySchedule(simpleData: SimpleWeekdayData): {
   blocks: TimeBlock[];
   baseTemperature: number;
 } {
-  const [baseTemperature, periods] = simpleData;
+  const { base_temperature: baseTemperature, periods } = simpleData;
   const blocks: TimeBlock[] = [];
 
   // Sort periods by start time
   const sortedPeriods = [...periods].sort((a, b) => {
-    const aStart = timeToMinutes(a.STARTTIME);
-    const bStart = timeToMinutes(b.STARTTIME);
+    const aStart = timeToMinutes(a.starttime);
+    const bStart = timeToMinutes(b.starttime);
     return aStart - bStart;
   });
 
@@ -408,11 +408,11 @@ export function parseSimpleWeekdaySchedule(simpleData: SimpleWeekdayData): {
   for (let i = 0; i < sortedPeriods.length; i++) {
     const period = sortedPeriods[i];
     blocks.push({
-      startTime: period.STARTTIME,
-      startMinutes: timeToMinutes(period.STARTTIME),
-      endTime: period.ENDTIME,
-      endMinutes: timeToMinutes(period.ENDTIME),
-      temperature: period.TEMPERATURE,
+      startTime: period.starttime,
+      startMinutes: timeToMinutes(period.starttime),
+      endTime: period.endtime,
+      endMinutes: timeToMinutes(period.endtime),
+      temperature: period.temperature,
       slot: i + 1,
     });
   }
@@ -422,7 +422,7 @@ export function parseSimpleWeekdaySchedule(simpleData: SimpleWeekdayData): {
 
 /**
  * Convert time blocks to simple weekday data format
- * Returns tuple: [base_temperature, periods[]]
+ * Returns object: {base_temperature, periods[]}
  */
 export function timeBlocksToSimpleWeekdayData(
   blocks: TimeBlock[],
@@ -436,13 +436,13 @@ export function timeBlocksToSimpleWeekdayData(
   // Convert blocks to periods (only periods that differ from base temperature)
   for (const block of sortedBlocks) {
     periods.push({
-      STARTTIME: block.startTime,
-      ENDTIME: block.endTime,
-      TEMPERATURE: block.temperature,
+      starttime: block.startTime,
+      endtime: block.endTime,
+      temperature: block.temperature,
     });
   }
 
-  return [baseTemperature, periods];
+  return { base_temperature: baseTemperature, periods };
 }
 
 /**
@@ -490,7 +490,7 @@ export function validateSimpleWeekdayData(
   minTemp: number = 5,
   maxTemp: number = 30.5,
 ): ValidationMessage | null {
-  const [baseTemperature, periods] = simpleData;
+  const { base_temperature: baseTemperature, periods } = simpleData;
 
   // Validate base temperature
   if (baseTemperature < minTemp || baseTemperature > maxTemp) {
@@ -506,12 +506,12 @@ export function validateSimpleWeekdayData(
   for (let i = 0; i < periods.length; i++) {
     const period = periods[i];
 
-    if (!period.STARTTIME || !period.ENDTIME || period.TEMPERATURE === undefined) {
+    if (!period.starttime || !period.endtime || period.temperature === undefined) {
       return { key: "slotMissingValues", params: { slot: `${i + 1}` } };
     }
 
-    const startMinutes = timeToMinutes(period.STARTTIME);
-    const endMinutes = timeToMinutes(period.ENDTIME);
+    const startMinutes = timeToMinutes(period.starttime);
+    const endMinutes = timeToMinutes(period.endtime);
 
     // Check for valid time range
     if (endMinutes <= startMinutes) {
@@ -520,11 +520,11 @@ export function validateSimpleWeekdayData(
 
     // Check for overlaps
     if (startMinutes < previousEndMinutes) {
-      return { key: "slotTimeBackwards", params: { slot: `${i + 1}`, time: period.STARTTIME } };
+      return { key: "slotTimeBackwards", params: { slot: `${i + 1}`, time: period.starttime } };
     }
 
     // Check for valid temperature
-    if (period.TEMPERATURE < minTemp || period.TEMPERATURE > maxTemp) {
+    if (period.temperature < minTemp || period.temperature > maxTemp) {
       return {
         key: "temperatureOutOfRange",
         params: { block: `${i + 1}`, min: `${minTemp}`, max: `${maxTemp}` },
@@ -563,7 +563,13 @@ export function validateSimpleProfileData(data: unknown): ValidationMessage | nu
     }
 
     const weekdayData = profileData[weekday];
-    if (!Array.isArray(weekdayData) || weekdayData.length !== 2) {
+    if (!weekdayData || typeof weekdayData !== "object") {
+      return { key: "invalidWeekdayData", params: { weekday } };
+    }
+
+    // Check if weekdayData has required properties
+    const data = weekdayData as Record<string, unknown>;
+    if (!("base_temperature" in data) || !("periods" in data)) {
       return { key: "invalidWeekdayData", params: { weekday } };
     }
 
