@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { property, state } from "lit/decorators.js";
 import type { HomeAssistant, HomematicScheduleCardConfig } from "./types";
 
 // Schema type for ha-form
@@ -20,7 +20,6 @@ const fireEvent = (node: HTMLElement, type: string, detail?: Record<string, unkn
   node.dispatchEvent(event);
 };
 
-@customElement("homematicip-local-climate-schedule-card-editor")
 export class HomematicScheduleCardEditor extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: HomematicScheduleCardConfig;
@@ -127,6 +126,12 @@ export class HomematicScheduleCardEditor extends LitElement {
     }
   `;
 }
+
+// Register custom element
+customElements.define(
+  "homematicip-local-climate-schedule-card-editor",
+  HomematicScheduleCardEditor,
+);
 
 declare global {
   interface HTMLElementTagNameMap {

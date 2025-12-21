@@ -28,7 +28,11 @@ export default {
     sourcemap: false,
   },
   treeshake: {
-    moduleSideEffects: false,
+    moduleSideEffects: (id) => {
+      // Keep editor module side effects (customElements.define)
+      if (id.includes("editor")) return true;
+      return false;
+    },
   },
   plugins: [
     replace({
