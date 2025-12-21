@@ -26,9 +26,9 @@ export class HomematicScheduleCardEditor extends LitElement {
 
   private static readonly SCHEMA: HaFormSchema[] = [
     {
-      name: "entity",
+      name: "entities",
       required: true,
-      selector: { entity: { domain: "climate" } },
+      selector: { entity: { domain: "climate", multiple: true } },
     },
     {
       name: "name",
@@ -66,19 +66,6 @@ export class HomematicScheduleCardEditor extends LitElement {
       },
       default: "24",
     },
-    {
-      name: "time_step_minutes",
-      selector: {
-        number: {
-          min: 1,
-          max: 60,
-          step: 1,
-          mode: "box",
-          unit_of_measurement: "min",
-        },
-      },
-      default: 15,
-    },
   ];
 
   public setConfig(config: HomematicScheduleCardConfig): void {
@@ -103,14 +90,13 @@ export class HomematicScheduleCardEditor extends LitElement {
 
   private _computeLabel = (schema: HaFormSchema): string => {
     const labels: Record<string, string> = {
-      entity: "Entity",
+      entities: "Entities",
       name: "Name (optional)",
       show_profile_selector: "Show profile selector",
       editable: "Allow editing",
       show_temperature: "Show temperature values",
       show_gradient: "Show color gradient",
       hour_format: "Time format",
-      time_step_minutes: "Time step (minutes)",
     };
     return labels[schema.name] || schema.name;
   };

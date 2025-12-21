@@ -195,7 +195,6 @@ entities:
 | `show_temperature`      | boolean  | `true`         | Show temps on blocks            |
 | `temperature_unit`      | string   | `°C`           | Temperature unit                |
 | `hour_format`           | string   | `24`           | `12` or `24` hour format        |
-| `time_step_minutes`     | number   | `15`           | Time picker step size           |
 
 ## Common Development Tasks
 

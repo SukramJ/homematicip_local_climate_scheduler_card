@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Consistent UI with standard Home Assistant cards
 - `getConfigElement()` and `getStubConfig()` static methods for editor support
 
+### Removed
+
+- `time_step_minutes` configuration option (browser time input step support is unreliable)
+
 ### Changed
 
 - Schedule data is now read from `schedule_data` attribute instead of `simple_schedule_data`

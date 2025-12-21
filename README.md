@@ -66,22 +66,21 @@ When only one entity is provided, the dropdown is hidden and the card shows the 
 
 ```yaml
 type: custom:homematicip-local-climate-schedule-card
-entity: climate.living_room_thermostat
+entities:
+  - climate.living_room_thermostat
 name: Living Room Schedule
 show_profile_selector: true
 editable: true
 show_temperature: true
 temperature_unit: "°C"
 hour_format: "24"
-time_step_minutes: 15
 ```
 
 ### Configuration Options
 
 | Option                  | Type     | Default        | Description                                                       |
 | ----------------------- | -------- | -------------- | ----------------------------------------------------------------- |
-| `entity`                | string   | —              | Single entity ID (fallback when `entities` not provided)          |
-| `entities`              | string[] | —              | List of entity IDs shown in a dropdown selector                   |
+| `entities`              | string[] | —              | List of climate entity IDs (required)                             |
 | `name`                  | string   | Entity name    | Custom name for the card (hidden when multi-entity selector used) |
 | `profile`               | string   | Active profile | Force display of a specific profile                               |
 | `show_profile_selector` | boolean  | `true`         | Show/hide the profile selector dropdown                           |
@@ -89,7 +88,6 @@ time_step_minutes: 15
 | `show_temperature`      | boolean  | `true`         | Show/hide temperature values on blocks                            |
 | `temperature_unit`      | string   | `°C`           | Temperature unit to display                                       |
 | `hour_format`           | string   | `24`           | Time format: `12` or `24` hour                                    |
-| `time_step_minutes`     | number   | `15`           | Time picker step size in minutes for the schedule editor          |
 
 ## Usage
 

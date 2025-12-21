@@ -56,11 +56,11 @@ export class HomematicScheduleCard extends LitElement {
   }
 
   static getStubConfig(hass: HomeAssistant) {
-    // Find first climate entity as suggestion
-    const entities = Object.keys(hass.states).filter((eid) => eid.startsWith("climate."));
+    // Find climate entities as suggestion
+    const climateEntities = Object.keys(hass.states).filter((eid) => eid.startsWith("climate."));
     return {
       type: "custom:homematicip-local-climate-schedule-card",
-      entity: entities[0] || "",
+      entities: climateEntities.length > 0 ? [climateEntities[0]] : [],
     };
   }
 
@@ -140,7 +140,6 @@ export class HomematicScheduleCard extends LitElement {
       show_temperature: true,
       temperature_unit: "°C",
       hour_format: "24",
-      time_step_minutes: 15,
       ...config,
       entity: fallbackEntity,
       entities: [...entityIds],
@@ -1592,7 +1591,6 @@ export class HomematicScheduleCard extends LitElement {
                     type="time"
                     class="time-input"
                     .value=${this._editingSlotData.startTime}
-                    step="${(this._config?.time_step_minutes || 15) * 60}"
                     @change=${(e: Event) => {
                       if (this._editingSlotData) {
                         this._editingSlotData = {
@@ -1609,7 +1607,6 @@ export class HomematicScheduleCard extends LitElement {
                     .value=${this._editingSlotData.endTime === "24:00"
                       ? "23:59"
                       : this._editingSlotData.endTime}
-                    step="${(this._config?.time_step_minutes || 15) * 60}"
                     @change=${(e: Event) => {
                       if (this._editingSlotData) {
                         let value = (e.target as HTMLInputElement).value;

@@ -11,7 +11,6 @@ export interface HomematicScheduleCardConfig {
   hour_format?: "12" | "24";
   language?: "en" | "de";
   show_gradient?: boolean;
-  time_step_minutes?: number;
 }
 
 export interface ScheduleSlot {
