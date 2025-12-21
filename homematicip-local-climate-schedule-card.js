@@ -124,7 +124,10 @@ function t(t,e,i,s){var o,r=arguments.length,n=r<3?e:null===s?s=Object.getOwnPro
                                   >${o.temperature.toFixed(1)}°</span
                                 >`:""}
                             <div class="time-block-tooltip">
-                              <div class="tooltip-time">${this._formatTimeDisplay(o.startTime)} - ${this._formatTimeDisplay(o.endTime)}</div>
+                              <div class="tooltip-time">
+                                ${this._formatTimeDisplay(o.startTime)} -
+                                ${this._formatTimeDisplay(o.endTime)}
+                              </div>
                               <div class="tooltip-temp">
                                 ${function(t,e="°C"){return`${t.toFixed(1)}${e}`}(o.temperature,this._config?.temperature_unit)}
                               </div>
