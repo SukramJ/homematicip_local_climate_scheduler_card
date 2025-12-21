@@ -8,7 +8,8 @@ module.exports = {
     "!src/**/*.d.ts",
     "!src/**/*.test.ts",
     "!src/**/__tests__/**",
-    "!src/homematicip-local-climate-schedule-card.ts", // Exclude Lit component from coverage
+    "!src/homematicip-local-climate-schedule-card.ts", // Exclude main Lit component from coverage
+    "!src/editor.ts", // Exclude editor (depends on lit which requires special Jest config)
   ],
   coverageThreshold: {
     global: {
