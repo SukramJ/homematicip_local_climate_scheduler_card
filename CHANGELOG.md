@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Export now always uses version "2.0" format
 - Editor dialog now shows weekday selector tabs instead of graphical week overview
 - Weekday tabs allow quick switching between days while editing
+- Updated temperature color scheme to align with Home Assistant 2025.12.x climate state colors
+  - Cold temperatures use HA Cool Blue (#2b9af9)
+  - Warm temperatures use HA Heat Orange (#ff8100)
+  - Improved gradient from blue → cyan → green → orange for better visual distinction
+- Fixed base temperature block detection in editor (compare only time boundaries, not temperature)
 
 ### Removed
 

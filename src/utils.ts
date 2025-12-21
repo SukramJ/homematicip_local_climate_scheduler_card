@@ -283,15 +283,21 @@ export function validateWeekdayData(weekdayData: WeekdayData): ValidationMessage
 }
 
 /**
- * Get temperature color based on value
+ * Get color for a temperature value
+ * Color scale aligned with Home Assistant 2025.12.x climate state colors:
+ * - Cool/Blue: #2b9af9 (--state-climate-cool-color)
+ * - Heat/Orange: #ff8100 (--state-climate-heat-color)
+ * - Idle/Gray: #8a8a8a (--state-climate-idle-color)
  */
 export function getTemperatureColor(temperature: number): string {
-  if (temperature < 12) return "#3498db"; // Cold - Blue
-  if (temperature < 16) return "#5dade2"; // Cool - Light Blue
-  if (temperature < 18) return "#58d68d"; // Mild - Green
-  if (temperature < 20) return "#f39c12"; // Warm - Orange
-  if (temperature < 22) return "#e67e22"; // Warmer - Dark Orange
-  return "#e74c3c"; // Hot - Red
+  if (temperature < 10) return "#2b9af9"; // Cold - HA Cool Blue
+  if (temperature < 14) return "#40c4ff"; // Cool - Light Blue
+  if (temperature < 17) return "#26c6da"; // Mild Cool - Cyan
+  if (temperature < 19) return "#66bb6a"; // Comfort Low - Green
+  if (temperature < 21) return "#9ccc65"; // Comfort - Light Green
+  if (temperature < 23) return "#ffb74d"; // Warm - Light Orange
+  if (temperature < 25) return "#ff8100"; // Warmer - HA Heat Orange
+  return "#f4511e"; // Hot - Deep Orange
 }
 
 /**

@@ -610,109 +610,111 @@ describe("Utils", () => {
   });
 
   describe("getTemperatureColor", () => {
-    it("should return correct colors for temperature ranges", () => {
-      expect(getTemperatureColor(10)).toBe("#3498db"); // Cold - Blue
-      expect(getTemperatureColor(14)).toBe("#5dade2"); // Cool - Light Blue
-      expect(getTemperatureColor(17)).toBe("#58d68d"); // Mild - Green
-      expect(getTemperatureColor(19)).toBe("#f39c12"); // Warm - Orange
-      expect(getTemperatureColor(21)).toBe("#e67e22"); // Warmer - Dark Orange
-      expect(getTemperatureColor(23)).toBe("#e74c3c"); // Hot - Red
+    it("should return correct colors for temperature ranges (HA 2025.12.x aligned)", () => {
+      expect(getTemperatureColor(5)).toBe("#2b9af9"); // Cold - HA Cool Blue
+      expect(getTemperatureColor(10)).toBe("#40c4ff"); // Cool - Light Blue
+      expect(getTemperatureColor(14)).toBe("#26c6da"); // Mild Cool - Cyan
+      expect(getTemperatureColor(17)).toBe("#66bb6a"); // Comfort Low - Green
+      expect(getTemperatureColor(19)).toBe("#9ccc65"); // Comfort - Light Green
+      expect(getTemperatureColor(21)).toBe("#ffb74d"); // Warm - Light Orange
+      expect(getTemperatureColor(23)).toBe("#ff8100"); // Warmer - HA Heat Orange
+      expect(getTemperatureColor(26)).toBe("#f4511e"); // Hot - Deep Orange
     });
   });
 
   describe("getTemperatureGradient", () => {
     it("should return solid color when no adjacent blocks exist", () => {
       const result = getTemperatureGradient(20, null, null);
-      expect(result).toBe("#e67e22"); // Solid color for 20°C (20-22 range)
+      expect(result).toBe("#9ccc65"); // Solid color for 20°C (19-21 range)
     });
 
     it("should return solid color when no adjacent blocks exist (different temperature)", () => {
       const result = getTemperatureGradient(15, null, null);
-      expect(result).toBe("#5dade2"); // Solid color for 15°C
+      expect(result).toBe("#26c6da"); // Solid color for 15°C (14-17 range)
     });
 
     it("should create gradient from previous to current when only previous block exists", () => {
       const result = getTemperatureGradient(20, 15, null);
       expect(result).toContain("linear-gradient");
       expect(result).toContain("to bottom");
-      expect(result).toContain("#5dade2"); // Color for 15°C (prev)
-      expect(result).toContain("#e67e22"); // Color for 20°C (current)
+      expect(result).toContain("#26c6da"); // Color for 15°C (prev)
+      expect(result).toContain("#9ccc65"); // Color for 20°C (current)
     });
 
     it("should create gradient from previous to current with different temperatures", () => {
-      const result = getTemperatureGradient(22, 10, null);
+      const result = getTemperatureGradient(22, 8, null);
       expect(result).toContain("linear-gradient");
       expect(result).toContain("to bottom");
-      expect(result).toContain("#3498db"); // Color for 10°C (prev)
-      expect(result).toContain("#e74c3c"); // Color for 22°C (current)
+      expect(result).toContain("#2b9af9"); // Color for 8°C (prev, < 10)
+      expect(result).toContain("#ffb74d"); // Color for 22°C (current, 21-23 range)
     });
 
     it("should create gradient from current to next when only next block exists", () => {
-      const result = getTemperatureGradient(20, null, 25);
+      const result = getTemperatureGradient(20, null, 26);
       expect(result).toContain("linear-gradient");
       expect(result).toContain("to bottom");
-      expect(result).toContain("#e67e22"); // Color for 20°C (current)
-      expect(result).toContain("#e74c3c"); // Color for 25°C (next)
+      expect(result).toContain("#9ccc65"); // Color for 20°C (current)
+      expect(result).toContain("#f4511e"); // Color for 26°C (next, >= 25)
     });
 
     it("should create gradient from current to next with different temperatures", () => {
-      const result = getTemperatureGradient(15, null, 10);
+      const result = getTemperatureGradient(15, null, 8);
       expect(result).toContain("linear-gradient");
       expect(result).toContain("to bottom");
-      expect(result).toContain("#5dade2"); // Color for 15°C (current)
-      expect(result).toContain("#3498db"); // Color for 10°C (next)
+      expect(result).toContain("#26c6da"); // Color for 15°C (current)
+      expect(result).toContain("#2b9af9"); // Color for 8°C (next)
     });
 
     it("should create gradient through current when both adjacent blocks exist", () => {
-      const result = getTemperatureGradient(20, 15, 25);
+      const result = getTemperatureGradient(20, 15, 26);
       expect(result).toContain("linear-gradient");
       expect(result).toContain("to bottom");
-      expect(result).toContain("#5dade2"); // Color for 15°C (prev)
-      expect(result).toContain("#e67e22"); // Color for 20°C (current)
+      expect(result).toContain("#26c6da"); // Color for 15°C (prev)
+      expect(result).toContain("#9ccc65"); // Color for 20°C (current)
       expect(result).toContain("50%"); // Current color at 50%
-      expect(result).toContain("#e74c3c"); // Color for 25°C (next)
+      expect(result).toContain("#f4511e"); // Color for 26°C (next)
     });
 
     it("should create gradient with all three colors when both adjacent blocks exist (different temps)", () => {
-      const result = getTemperatureGradient(19, 10, 23);
+      const result = getTemperatureGradient(19, 8, 24);
       expect(result).toContain("linear-gradient");
       expect(result).toContain("to bottom");
-      expect(result).toContain("#3498db"); // Color for 10°C (prev)
-      expect(result).toContain("#f39c12"); // Color for 19°C (current, 18-20 range)
+      expect(result).toContain("#2b9af9"); // Color for 8°C (prev)
+      expect(result).toContain("#9ccc65"); // Color for 19°C (current, 19-21 range)
       expect(result).toContain("50%"); // Current color at 50%
-      expect(result).toContain("#e74c3c"); // Color for 23°C (next)
+      expect(result).toContain("#ff8100"); // Color for 24°C (next, 23-25 range)
     });
 
     it("should handle edge case with same temperature for all blocks", () => {
       const result = getTemperatureGradient(20, 20, 20);
       expect(result).toContain("linear-gradient");
-      expect(result).toContain("#e67e22"); // All same color (20-22 range)
+      expect(result).toContain("#9ccc65"); // All same color (19-21 range)
     });
 
     it("should handle edge case with very low temperature", () => {
       const result = getTemperatureGradient(5, null, null);
-      expect(result).toBe("#3498db"); // Cold - Blue
+      expect(result).toBe("#2b9af9"); // Cold - HA Cool Blue
     });
 
     it("should handle edge case with very high temperature", () => {
       const result = getTemperatureGradient(30, null, null);
-      expect(result).toBe("#e74c3c"); // Hot - Red
+      expect(result).toBe("#f4511e"); // Hot - Deep Orange
     });
 
-    it("should handle temperature boundaries correctly (11.9°C vs 12°C)", () => {
-      const color1 = getTemperatureColor(11.9);
-      const color2 = getTemperatureColor(12);
-      const gradient = getTemperatureGradient(12, 11.9, null);
+    it("should handle temperature boundaries correctly (9.9°C vs 10°C)", () => {
+      const color1 = getTemperatureColor(9.9);
+      const color2 = getTemperatureColor(10);
+      const gradient = getTemperatureGradient(10, 9.9, null);
       expect(gradient).toContain(color1);
       expect(gradient).toContain(color2);
     });
 
     it("should handle descending temperature gradient", () => {
-      const result = getTemperatureGradient(15, 25, 10);
+      const result = getTemperatureGradient(15, 26, 8);
       expect(result).toContain("linear-gradient");
-      expect(result).toContain("#e74c3c"); // Color for 25°C (prev)
-      expect(result).toContain("#5dade2"); // Color for 15°C (current)
-      expect(result).toContain("#3498db"); // Color for 10°C (next)
+      expect(result).toContain("#f4511e"); // Color for 26°C (prev)
+      expect(result).toContain("#26c6da"); // Color for 15°C (current)
+      expect(result).toContain("#2b9af9"); // Color for 8°C (next)
     });
   });
 

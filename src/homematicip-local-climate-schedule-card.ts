@@ -1565,11 +1565,9 @@ export class HomematicScheduleCard extends LitElement {
           </div>
           ${displayBlocks.map((block, displayIndex) => {
             // Find if this display block corresponds to an editing block
+            // Only compare time boundaries, not temperature (to handle floating point issues)
             const editingIndex = this._editingBlocks!.findIndex(
-              (b) =>
-                b.startMinutes === block.startMinutes &&
-                b.endMinutes === block.endMinutes &&
-                b.temperature === block.temperature,
+              (b) => b.startMinutes === block.startMinutes && b.endMinutes === block.endMinutes,
             );
 
             const isActualBlock = editingIndex !== -1;
