@@ -1,11 +1,11 @@
-# HomematicIP Local Climate Scheduler Card
+# HomematicIP Local Climate Schedule Card
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A custom Lovelace card for Home Assistant to display and edit Homematic thermostat schedules with the HomematicIP Local integration.
 
-![Card Preview](https://via.placeholder.com/800x400?text=Card+Preview)
+![HomematicIP Local Climate Schedule Card](logo.png)
 
 ## Features
 

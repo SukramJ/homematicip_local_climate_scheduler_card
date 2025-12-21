@@ -1,15 +1,17 @@
-# HomematicIP Local Climate Scheduler Card
+# HomematicIP Local Climate Schedule Card
+
+![HomematicIP Local Climate Schedule Card](logo.png)
 
 A custom Lovelace card for Home Assistant to display and edit Homematic thermostat schedules.
 
 ## Features
 
 - 📅 Visual week schedule display with color-coded temperature blocks
-- ✏️ Interactive schedule editor with time and temperature controls
-- 🎨 Color-coded temperature visualization (blue = cold, red = hot)
+- ✏️ Interactive schedule editor with weekday tabs and time/temperature controls
+- 🎨 Color-coded temperature visualization aligned with Home Assistant 2025.12.x
 - 🔄 Profile switching support
 - 📱 Responsive design for desktop and mobile
-- 🌍 Compatible with HomematicIP Local integration
+- 🌍 Compatible with HomematicIP Local integration v2.0.0+
 
 ## Installation via HACS
 
@@ -70,14 +72,16 @@ temperature_unit: "°C"
 
 ### Viewing Schedules
 
-The card displays a week view with each day showing temperature blocks. Colors indicate temperature:
+The card displays a week view with each day showing temperature blocks. Colors aligned with Home Assistant 2025.12.x climate state colors:
 
-- 🔵 Blue (< 12°C): Very cold
-- 💙 Light Blue (12-16°C): Cool
-- 💚 Green (16-18°C): Mild
-- 🟠 Orange (18-20°C): Warm
-- 🟠 Dark Orange (20-22°C): Warmer
-- 🔴 Red (≥ 22°C): Hot
+- 🔵 Blue (< 10°C): Cold (HA Cool Blue)
+- 💙 Light Blue (10-14°C): Cool
+- 🩵 Cyan (14-17°C): Mild Cool
+- 💚 Green (17-19°C): Comfort Low
+- 🟢 Light Green (19-21°C): Comfort
+- 🟠 Light Orange (21-23°C): Warm
+- 🟠 Orange (23-25°C): Warmer (HA Heat Orange)
+- 🔴 Deep Orange (≥ 25°C): Hot
 
 ### Editing Schedules
 
